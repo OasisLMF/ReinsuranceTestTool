@@ -1,10 +1,10 @@
 """
-Test wrapper on FMCalcs with friendlier data structures and illustrative
-reinsurance functaionality.
+Test tool for reinsurance functaionality. 
+Takes input data in OED format, and invokes the Oasis Platform financial module.
 """
+
 import argparse
 import itertools
-import json
 import os
 import shutil
 import subprocess
@@ -73,7 +73,6 @@ COVERAGE_TYPES = [
     TIME_COVERAGE_TYPE_ID]
 
 PERILS = [PERIL_WIND]
-
 
 Item = namedtuple(
     "Item", "item_id coverage_id areaperil_id vulnerability_id group_id")
@@ -318,14 +317,6 @@ class DirectLayer(object):
         del losses_df['item_id']
 
         return losses_df
-
-
-
-
-
-
-
-
 
 class ReinsuranceLayer(object):
 
@@ -573,7 +564,7 @@ class ReinsuranceLayer(object):
 def run_test(run_name, oed_dir, loss_factor):
     if oed_dir is not None:
         if not os.path.exists(oed_dir):
-            print "Path does not exist: {}".format(oed_dir)
+            print("Path does not exist: {}".format(oed_dir))
             exit(1)
         # Account file
         oed_account_file = os.path.join(oed_dir, "account.csv")
@@ -646,24 +637,25 @@ def run_test(run_name, oed_dir, loss_factor):
     finally:
         os.chdir(cwd)
 
-parser = argparse.ArgumentParser(
-    description='Run Oasis FM examples with reinsurance.')
-parser.add_argument(
-    '-n', '--name', metavar='N', type=str, required=True,
-    help='The analysis name. All intermediate files will be "+ \
-       policies=a         "saved in a labelled directory.')
-parser.add_argument(
-    '-o', '--oed_dir', metavar='N', type=str, default=None, required=False,
-    help='The directory containing the set of OED exposure data files.')
-parser.add_argument(
-    '-l', '--loss_factor', metavar='N', type=float, default=1.0,
-    help='The loss factor to apply to TIVs.')
+if __name__ == "__main__":
+    # execute only if run as a script
+    parser = argparse.ArgumentParser(
+        description='Run Oasis FM examples with reinsurance.')
+    parser.add_argument(
+        '-n', '--name', metavar='N', type=str, required=True,
+        help='The analysis name. All intermediate files will be "+ \
+        policies=a         "saved in a labelled directory.')
+    parser.add_argument(
+        '-o', '--oed_dir', metavar='N', type=str, default=None, required=False,
+        help='The directory containing the set of OED exposure data files.')
+    parser.add_argument(
+        '-l', '--loss_factor', metavar='N', type=float, default=1.0,
+        help='The loss factor to apply to TIVs.')
 
-args = parser.parse_args()
+    args = parser.parse_args()
 
-run_name = args.name
-oed_dir = args.oed_dir
-loss_factor = args.loss_factor
+    run_name = args.name
+    oed_dir = args.oed_dir
+    loss_factor = args.loss_factor
 
-run_test(run_name, oed_dir, loss_factor)
-    
+    run_test(run_name, oed_dir, loss_factor)

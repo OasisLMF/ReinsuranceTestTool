@@ -498,7 +498,6 @@ class ReinsuranceLayer(object):
                 first = False
 
 
-        print layer_layer_id
         output_id = 0
         for __, xref_description in self.xref_descriptions.iterrows():
             output_id = output_id + 1
@@ -548,7 +547,6 @@ class ReinsuranceLayer(object):
             "fmcalc -p {0} -n < {1}.bin | tee {0}.bin | fmtocsv > {0}.csv".format(
                 self.name, input)
 
-        print command
         proc = subprocess.Popen(command, shell=True)
         proc.wait()
         if proc.returncode != 0:
@@ -571,13 +569,6 @@ class ReinsuranceLayer(object):
         del losses_df['output_id']
         del losses_df['xref_id']
         return losses_df
-
-
-
-
-
-
-
 
 parser = argparse.ArgumentParser(
     description='Run Oasis FM examples with reinsurance.')
@@ -642,10 +633,10 @@ try:
     direct_layer.generate_oasis_structures()
     direct_layer.write_oasis_files()
     losses_df = direct_layer.apply_fm(loss_percentage_of_tiv=loss_factor, net=False)
-    print "Direct layer loss"
-    print tabulate(losses_df, headers='keys', tablefmt='psql', floatfmt=".2f")
-    print "" # Should this be filtered?
-    print ""
+    print("Direct layer loss")
+    print(tabulate(losses_df, headers='keys', tablefmt='psql', floatfmt=".2f"))
+    print("")
+    print("")
 
     for inuring_priority in range(1, ri_info_df['InuringPriority'].max()+1):
         reinsurance_layer = ReinsuranceLayer(
@@ -665,10 +656,10 @@ try:
             treaty_losses_df = reinsurance_layer.apply_fm("ils")
         else:
             treaty_losses_df = reinsurance_layer.apply_fm("ri{}".format(inuring_priority-1))        
-        print "Reinsurance - first inuring layer"
-        print tabulate(treaty_losses_df, headers='keys', tablefmt='psql', floatfmt=".2f")
-        print ""
-        print ""
+        print("Reinsurance - first inuring layer")
+        print(tabulate(treaty_losses_df, headers='keys', tablefmt='psql', floatfmt=".2f"))
+        print("")
+        print("")
 
 finally:
     os.chdir(cwd)

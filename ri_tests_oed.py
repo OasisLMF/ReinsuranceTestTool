@@ -596,28 +596,28 @@ if oed_dir is not None:
     # Account file
     oed_account_file = os.path.join(oed_dir, "account.csv")
     if not os.path.exists(oed_account_file):
-        print "Path does not exist: {}".format(oed_account_file)
+        print("Path does not exist: {}".format(oed_account_file))
         exit(1)
     account_df = pd.read_csv(oed_account_file)
 
     # Location file
     oed_location_file = os.path.join(oed_dir, "location.csv")
     if not os.path.exists(oed_location_file):
-        print "Path does not exist: {}".format(oed_location_file)
+        print("Path does not exist: {}".format(oed_location_file))
         exit(1)
     location_df = pd.read_csv(oed_location_file)
 
     # RI info file
     oed_ri_info_file = os.path.join(oed_dir, "ri_info.csv")
     if not os.path.exists(oed_ri_info_file):
-        print "Path does not exist: {}".format(oed_ri_info_file)
+        print("Path does not exist: {}".format(oed_ri_info_file))
         exit(1)
     ri_info_df = pd.read_csv(oed_ri_info_file)
 
     # RI scope file
     oed_ri_scope_file = os.path.join(oed_dir, "ri_scope.csv")
     if not os.path.exists(oed_ri_scope_file):
-        print "Path does not exist: {}".format(oed_ri_scope_file)
+        print("Path does not exist: {}".format(oed_ri_scope_file))
         exit(1)
     ri_scope_pd = pd.read_csv(oed_ri_scope_file)
 

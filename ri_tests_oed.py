@@ -281,7 +281,7 @@ class DirectLayer(object):
 
     def apply_fm(self, loss_percentage_of_tiv=1.0, net=False):
         guls_list = list()
-        for item_id, tiv in itertools.izip(self.item_ids, self.item_tivs):
+        for item_id, tiv in zip(self.item_ids, self.item_tivs):
             event_loss = loss_percentage_of_tiv * tiv
             guls_list.append(
                 GulRecord(event_id=1, item_id=item_id, sidx=-1, loss=event_loss))
@@ -561,7 +561,9 @@ class ReinsuranceLayer(object):
         del losses_df['xref_id']
         return losses_df
 
-def run_test(run_name, oed_dir, loss_factor):
+
+def load_oed_dfs(oed_dir):
+
     if oed_dir is not None:
         if not os.path.exists(oed_dir):
             print("Path does not exist: {}".format(oed_dir))
@@ -592,7 +594,11 @@ def run_test(run_name, oed_dir, loss_factor):
         if not os.path.exists(oed_ri_scope_file):
             print("Path does not exist: {}".format(oed_ri_scope_file))
             exit(1)
-        ri_scope_pd = pd.read_csv(oed_ri_scope_file)
+        ri_scope_df = pd.read_csv(oed_ri_scope_file)
+    
+    return (account_df, location_df, ri_info_df, ri_scope_df)
+
+def run_test(run_name, account_df, location_df, ri_info_df, ri_scope_df, loss_factor):
 
     if os.path.exists(run_name):
         shutil.rmtree(run_name)
@@ -615,7 +621,7 @@ def run_test(run_name, oed_dir, loss_factor):
             reinsurance_layer = ReinsuranceLayer(
                 name="ri{}".format(inuring_priority),
                 ri_info = ri_info_df.loc[ri_info_df['InuringPriority'] == inuring_priority],
-                ri_scope = ri_scope_pd,
+                ri_scope = ri_scope_df,
                 accounts = account_df,
                 locations = location_df,
                 items=direct_layer.items,
@@ -658,4 +664,6 @@ if __name__ == "__main__":
     oed_dir = args.oed_dir
     loss_factor = args.loss_factor
 
-    run_test(run_name, oed_dir, loss_factor)
+    (account_df, location_df, ri_info_df, ri_scope_df) = load_oed_dfs(oed_dir)
+
+    run_test(run_name, account_df, location_df, ri_info_df, ri_scope_df, loss_factor)

@@ -56,15 +56,15 @@ OPTIONAL_INPUTS_FILES = [
     'events']
 
 CONVERSION_TOOLS = {
-    'coverages': '../coveragetobin',
-    'events': '../evetobin',
-    'fm_policytc': '../fmpolicytctobin',
-    'fm_profile': '../fmprofiletobin',
-    'fm_programme': '../fmprogrammetobin',
-    'fm_xref': '../fmxreftobin',
-    'fmsummaryxref': '../fmsummaryxreftobin',
-    'gulsummaryxref': '../gulsummaryxreftobin',
-    'items': "../itemtobin"}
+    'coverages': '../ktools/coveragetobin',
+    'events': '../ktools/evetobin',
+    'fm_policytc': '../ktools/fmpolicytctobin',
+    'fm_profile': '../ktools/fmprofiletobin',
+    'fm_programme': '../ktools/fmprogrammetobin',
+    'fm_xref': '../ktools/fmxreftobin',
+    'fmsummaryxref': '../ktools/fmsummaryxreftobin',
+    'gulsummaryxref': '../ktools/gulsummaryxreftobin',
+    'items': "../ktools/itemtobin"}
 
 COVERAGE_TYPES = [
     BUILDING_COVERAGE_TYPE_ID,
@@ -292,7 +292,7 @@ class DirectLayer(object):
         net_flag = ""
         if net:
             net_flag = "-n"
-        command = "../gultobin -S 1 < guls.csv | ../fmcalc -p direct {} | tee ils.bin | ../fmtocsv > ils.csv".format(
+        command = "../ktools/gultobin -S 1 < guls.csv | ../ktools/fmcalc -p direct {} | tee ils.bin | ../ktools/fmtocsv > ils.csv".format(
             net_flag)
         proc = subprocess.Popen(command, shell=True)
         proc.wait()
@@ -535,7 +535,7 @@ class ReinsuranceLayer(object):
 
     def apply_fm(self, input):
         command = \
-            "../fmcalc -p {0} -n < {1}.bin | tee {0}.bin | ../fmtocsv > {0}.csv".format(
+            "../ktools/fmcalc -p {0} -n < {1}.bin | tee {0}.bin | ../ktools/fmtocsv > {0}.csv".format(
                 self.name, input)
 
         proc = subprocess.Popen(command, shell=True)

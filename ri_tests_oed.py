@@ -570,6 +570,82 @@ class ReinsuranceLayer(object):
         del losses_df['xref_id']
         return losses_df
 
+def run_test(run_name, oed_dir, loss_factor):
+    if oed_dir is not None:
+        if not os.path.exists(oed_dir):
+            print "Path does not exist: {}".format(oed_dir)
+            exit(1)
+        # Account file
+        oed_account_file = os.path.join(oed_dir, "account.csv")
+        if not os.path.exists(oed_account_file):
+            print("Path does not exist: {}".format(oed_account_file))
+            exit(1)
+        account_df = pd.read_csv(oed_account_file)
+
+        # Location file
+        oed_location_file = os.path.join(oed_dir, "location.csv")
+        if not os.path.exists(oed_location_file):
+            print("Path does not exist: {}".format(oed_location_file))
+            exit(1)
+        location_df = pd.read_csv(oed_location_file)
+
+        # RI info file
+        oed_ri_info_file = os.path.join(oed_dir, "ri_info.csv")
+        if not os.path.exists(oed_ri_info_file):
+            print("Path does not exist: {}".format(oed_ri_info_file))
+            exit(1)
+        ri_info_df = pd.read_csv(oed_ri_info_file)
+
+        # RI scope file
+        oed_ri_scope_file = os.path.join(oed_dir, "ri_scope.csv")
+        if not os.path.exists(oed_ri_scope_file):
+            print("Path does not exist: {}".format(oed_ri_scope_file))
+            exit(1)
+        ri_scope_pd = pd.read_csv(oed_ri_scope_file)
+
+    if os.path.exists(run_name):
+        shutil.rmtree(run_name)
+    os.mkdir(run_name)
+
+    cwd = os.getcwd()
+    try:
+        os.chdir(run_name)
+
+        direct_layer = DirectLayer(account_df, location_df)
+        direct_layer.generate_oasis_structures()
+        direct_layer.write_oasis_files()
+        losses_df = direct_layer.apply_fm(loss_percentage_of_tiv=loss_factor, net=False)
+        print("Direct layer loss")
+        print(tabulate(losses_df, headers='keys', tablefmt='psql', floatfmt=".2f"))
+        print("")
+        print("")
+
+        for inuring_priority in range(1, ri_info_df['InuringPriority'].max()+1):
+            reinsurance_layer = ReinsuranceLayer(
+                name="ri{}".format(inuring_priority),
+                ri_info = ri_info_df.loc[ri_info_df['InuringPriority'] == inuring_priority],
+                ri_scope = ri_scope_pd,
+                accounts = account_df,
+                locations = location_df,
+                items=direct_layer.items,
+                coverages=direct_layer.coverages,
+                xref_descriptions=direct_layer.xref_descriptions
+            )
+
+            reinsurance_layer.generate_oasis_structures()
+            reinsurance_layer.write_oasis_files()
+            if inuring_priority == 1:
+                treaty_losses_df = reinsurance_layer.apply_fm("ils")
+            else:
+                treaty_losses_df = reinsurance_layer.apply_fm("ri{}".format(inuring_priority-1))        
+            print("Reinsurance - first inuring layer")
+            print(tabulate(treaty_losses_df, headers='keys', tablefmt='psql', floatfmt=".2f"))
+            print("")
+            print("")
+
+    finally:
+        os.chdir(cwd)
+
 parser = argparse.ArgumentParser(
     description='Run Oasis FM examples with reinsurance.')
 parser.add_argument(
@@ -589,78 +665,5 @@ run_name = args.name
 oed_dir = args.oed_dir
 loss_factor = args.loss_factor
 
-if oed_dir is not None:
-    if not os.path.exists(oed_dir):
-        print "Path does not exist: {}".format(oed_dir)
-        exit(1)
-    # Account file
-    oed_account_file = os.path.join(oed_dir, "account.csv")
-    if not os.path.exists(oed_account_file):
-        print("Path does not exist: {}".format(oed_account_file))
-        exit(1)
-    account_df = pd.read_csv(oed_account_file)
-
-    # Location file
-    oed_location_file = os.path.join(oed_dir, "location.csv")
-    if not os.path.exists(oed_location_file):
-        print("Path does not exist: {}".format(oed_location_file))
-        exit(1)
-    location_df = pd.read_csv(oed_location_file)
-
-    # RI info file
-    oed_ri_info_file = os.path.join(oed_dir, "ri_info.csv")
-    if not os.path.exists(oed_ri_info_file):
-        print("Path does not exist: {}".format(oed_ri_info_file))
-        exit(1)
-    ri_info_df = pd.read_csv(oed_ri_info_file)
-
-    # RI scope file
-    oed_ri_scope_file = os.path.join(oed_dir, "ri_scope.csv")
-    if not os.path.exists(oed_ri_scope_file):
-        print("Path does not exist: {}".format(oed_ri_scope_file))
-        exit(1)
-    ri_scope_pd = pd.read_csv(oed_ri_scope_file)
-
-if os.path.exists(run_name):
-    shutil.rmtree(run_name)
-os.mkdir(run_name)
-
-cwd = os.getcwd()
-try:
-    os.chdir(run_name)
-
-    direct_layer = DirectLayer(account_df, location_df)
-    direct_layer.generate_oasis_structures()
-    direct_layer.write_oasis_files()
-    losses_df = direct_layer.apply_fm(loss_percentage_of_tiv=loss_factor, net=False)
-    print("Direct layer loss")
-    print(tabulate(losses_df, headers='keys', tablefmt='psql', floatfmt=".2f"))
-    print("")
-    print("")
-
-    for inuring_priority in range(1, ri_info_df['InuringPriority'].max()+1):
-        reinsurance_layer = ReinsuranceLayer(
-            name="ri{}".format(inuring_priority),
-            ri_info = ri_info_df.loc[ri_info_df['InuringPriority'] == inuring_priority],
-            ri_scope = ri_scope_pd,
-            accounts = account_df,
-            locations = location_df,
-            items=direct_layer.items,
-            coverages=direct_layer.coverages,
-            xref_descriptions=direct_layer.xref_descriptions
-        )
-
-        reinsurance_layer.generate_oasis_structures()
-        reinsurance_layer.write_oasis_files()
-        if inuring_priority == 1:
-            treaty_losses_df = reinsurance_layer.apply_fm("ils")
-        else:
-            treaty_losses_df = reinsurance_layer.apply_fm("ri{}".format(inuring_priority-1))        
-        print("Reinsurance - first inuring layer")
-        print(tabulate(treaty_losses_df, headers='keys', tablefmt='psql', floatfmt=".2f"))
-        print("")
-        print("")
-
-finally:
-    os.chdir(cwd)
+run_test(run_name, oed_dir, loss_factor)
     

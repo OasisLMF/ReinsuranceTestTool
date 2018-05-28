@@ -401,7 +401,6 @@ class ReinsuranceLayer(object):
         reinsurance_layers = pd.merge(
             left=self.ri_info,right=self.ri_scope, left_on='ReinsNumber', right_on='ReinsNumber',
             suffixes=('_treaty', '_risk'))
-        print(len(reinsurance_layers))
         for index, layer in reinsurance_layers.iterrows():
 
             if first:
@@ -604,6 +603,8 @@ def run_test(run_name, account_df, location_df, ri_info_df, ri_scope_df, loss_fa
         shutil.rmtree(run_name)
     os.mkdir(run_name)
 
+    net_losses = []
+
     cwd = os.getcwd()
     try:
         os.chdir(run_name)
@@ -612,10 +613,11 @@ def run_test(run_name, account_df, location_df, ri_info_df, ri_scope_df, loss_fa
         direct_layer.generate_oasis_structures()
         direct_layer.write_oasis_files()
         losses_df = direct_layer.apply_fm(loss_percentage_of_tiv=loss_factor, net=False)
-        print("Direct layer loss")
-        print(tabulate(losses_df, headers='keys', tablefmt='psql', floatfmt=".2f"))
-        print("")
-        print("")
+        net_losses.append(losses_df)
+#        print("Direct layer loss")
+#        print(tabulate(losses_df, headers='keys', tablefmt='psql', floatfmt=".2f"))
+#        print("")
+#        print("")
 
         for inuring_priority in range(1, ri_info_df['InuringPriority'].max()+1):
             reinsurance_layer = ReinsuranceLayer(
@@ -632,16 +634,21 @@ def run_test(run_name, account_df, location_df, ri_info_df, ri_scope_df, loss_fa
             reinsurance_layer.generate_oasis_structures()
             reinsurance_layer.write_oasis_files()
             if inuring_priority == 1:
-                treaty_losses_df = reinsurance_layer.apply_fm("ils")
+                reinsurance_layer_losses_df = reinsurance_layer.apply_fm("ils")
             else:
-                treaty_losses_df = reinsurance_layer.apply_fm("ri{}".format(inuring_priority-1))        
-            print("Reinsurance - first inuring layer")
-            print(tabulate(treaty_losses_df, headers='keys', tablefmt='psql', floatfmt=".2f"))
-            print("")
-            print("")
+                reinsurance_layer_losses_df = reinsurance_layer.apply_fm("ri{}".format(inuring_priority-1))        
+
+            net_losses.append(reinsurance_layer_losses_df)
+
+            # print("Reinsurance - first inuring layer")
+            # print(tabulate(treaty_losses_df, headers='keys', tablefmt='psql', floatfmt=".2f"))
+            # print("")
+            # print("")
 
     finally:
         os.chdir(cwd)
+
+    return net_losses
 
 if __name__ == "__main__":
     # execute only if run as a script
@@ -666,4 +673,10 @@ if __name__ == "__main__":
 
     (account_df, location_df, ri_info_df, ri_scope_df) = load_oed_dfs(oed_dir)
 
-    run_test(run_name, account_df, location_df, ri_info_df, ri_scope_df, loss_factor)
+    net_losses = run_test(run_name, account_df, location_df, ri_info_df, ri_scope_df, loss_factor)
+
+    for net_loss in net_losses:
+        #print("Reinsurance - first inuring layer")
+        print(tabulate(net_loss, headers='keys', tablefmt='psql', floatfmt=".2f"))
+        print("")
+        print("")

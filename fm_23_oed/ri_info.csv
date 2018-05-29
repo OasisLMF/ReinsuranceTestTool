@@ -1,4 +1,4 @@
 ReinsNumber,ReinsLayerNumber,ReinsName,ReinsPerilCode,ReinsInceptionDate,ReinsExpiryDate,CededAmount,RiskLimit,RiskAttachmentPoint,OccurenceLimit,OccurenceAttachmentPoint,OccurenceFranchiseDed,OccurenceReverseFranchise,AggregateLimit,AggregateAttachmentPoint,ReinsCurrency,InuringPriority,ReinsType,AttachmentBasis,ReinstatementNumber,ReinstatementCharge,ReinsPremium,ReinsHoursClause,PlacementPercent,DeemedPercentPlaced,ReinsFXrate,TreatyPercent,UseReinsDates
 1,1,ABC Fac,WW1,01/01/2018,31/12/2018,0.5,100,10,0,0,0,0,0,0,USD,1,FAC,LO,99,0,6,,1,1,1,1,No
-2,1,CDF Cat XL 1,WW1,01/01/2018,31/12/2018,1,0,0,100,0,0,0,0,0,USD,2,CAT XL,LO,1,0,40,,1,1,1,0.05,No
-3,2,CDF Cat XL 2,WW1,01/01/2018,31/12/2018,0.5,0,0,100,100,0,0,0,0,USD,2,CAT XL,LO,3,100;50;0,35,,1,1,1,0.04,No
+2,1,CDF Cat XL 1,WW1,01/01/2018,31/12/2018,1,0,0,100,0,0,0,0,0,USD,2,CAT XL,LO,1,0,40,,1,1,1,1.0,No
+3,2,CDF Cat XL 2,WW1,01/01/2018,31/12/2018,0.5,0,0,200,100,0,0,0,0,USD,2,CAT XL,LO,3,100;50;0,35,,1,1,1,1.0,No

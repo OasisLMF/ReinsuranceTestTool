@@ -66,6 +66,49 @@ CONVERSION_TOOLS = {
     'gulsummaryxref': '../ktools/gulsummaryxreftobin',
     'items': "../ktools/itemtobin"}
 
+# Subset of the fields that are currently used
+OED_ACCOUNT_FIELDS = [
+    'PortfolioNumber',
+    'AccountNumber',
+    'PolicyNumber',
+    'PerilCode',
+    'Ded6',
+    'Limit6'
+]
+
+OED_LOCATION_FIELDS = [
+    'AccountNumber',
+    'LocationNumber',
+    'Ded6',
+    'Limit6',
+    'BuildingTIV',
+    'OtherTIV',
+    'ContentsTIV',
+    'BITIV'
+]
+
+OED_REINS_INFO_FIELDS = [
+    'ReinsNumber',
+    'ReinsLayerNumber',
+    'CededAmount',
+    'RiskLimit',
+    'RiskAttachmentPoint',
+    'OccurenceLimit',
+    'OccurenceAttachmentPoint',
+    'InuringPriority',
+    'ReinsType',
+    'PlacementPercent',
+    'TreatyPercent'
+]
+
+OED_REINS_SCOPE_FIELDS = [
+    'ReinsNumber',
+    'AccountNumber',
+    'LocationNumber',
+    'RiskLevel',
+    'CededAmount'
+]
+
 COVERAGE_TYPES = [
     BUILDING_COVERAGE_TYPE_ID,
     OTHER_BUILDING_COVERAGE_TYPE_ID,
@@ -561,7 +604,7 @@ class ReinsuranceLayer(object):
         return losses_df
 
 
-def load_oed_dfs(oed_dir):
+def load_oed_dfs(oed_dir, show_all=False):
 
     if oed_dir is not None:
         if not os.path.exists(oed_dir):
@@ -594,7 +637,13 @@ def load_oed_dfs(oed_dir):
             print("Path does not exist: {}".format(oed_ri_scope_file))
             exit(1)
         ri_scope_df = pd.read_csv(oed_ri_scope_file)
-    
+
+        if not show_all:
+            account_df = account_df[OED_ACCOUNT_FIELDS].copy()
+            location_df = location_df[OED_LOCATION_FIELDS].copy()
+            ri_info_df = ri_info_df[OED_REINS_INFO_FIELDS].copy()
+            ri_scope_df = ri_scope_df[OED_REINS_SCOPE_FIELDS].copy()
+
     return (account_df, location_df, ri_info_df, ri_scope_df)
 
 def run_test(run_name, account_df, location_df, ri_info_df, ri_scope_df, loss_factor):
@@ -614,10 +663,6 @@ def run_test(run_name, account_df, location_df, ri_info_df, ri_scope_df, loss_fa
         direct_layer.write_oasis_files()
         losses_df = direct_layer.apply_fm(loss_percentage_of_tiv=loss_factor, net=False)
         net_losses.append(losses_df)
-#        print("Direct layer loss")
-#        print(tabulate(losses_df, headers='keys', tablefmt='psql', floatfmt=".2f"))
-#        print("")
-#        print("")
 
         for inuring_priority in range(1, ri_info_df['InuringPriority'].max()+1):
             reinsurance_layer = ReinsuranceLayer(
@@ -639,11 +684,6 @@ def run_test(run_name, account_df, location_df, ri_info_df, ri_scope_df, loss_fa
                 reinsurance_layer_losses_df = reinsurance_layer.apply_fm("ri{}".format(inuring_priority-1))        
 
             net_losses.append(reinsurance_layer_losses_df)
-
-            # print("Reinsurance - first inuring layer")
-            # print(tabulate(treaty_losses_df, headers='keys', tablefmt='psql', floatfmt=".2f"))
-            # print("")
-            # print("")
 
     finally:
         os.chdir(cwd)
@@ -676,7 +716,6 @@ if __name__ == "__main__":
     net_losses = run_test(run_name, account_df, location_df, ri_info_df, ri_scope_df, loss_factor)
 
     for net_loss in net_losses:
-        #print("Reinsurance - first inuring layer")
         print(tabulate(net_loss, headers='keys', tablefmt='psql', floatfmt=".2f"))
         print("")
         print("")

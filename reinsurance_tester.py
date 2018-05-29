@@ -1,10 +1,9 @@
 """
-Test tool for reinsurance functaionality. 
+Test tool for reinsurance functaionality and OED data input.
 Takes input data in OED format, and invokes the Oasis Platform financial module.
 """
 
 import argparse
-import itertools
 import os
 import shutil
 import subprocess
@@ -12,6 +11,9 @@ from collections import namedtuple
 from tabulate import tabulate
 import pandas as pd
 
+#
+# Ktools constants
+#
 DEDUCTIBLE_AND_LIMIT_CALCRULE_ID = 1
 FRANCHISE_DEDUCTIBLE_AND_LIMIT_CALCRULE_ID = 3
 DEDUCTIBLE_ONLY_CALCRULE_ID = 12
@@ -32,13 +34,14 @@ BUILDING_COVERAGE_TYPE_ID = 1
 OTHER_BUILDING_COVERAGE_TYPE_ID = 2
 CONTENTS_COVERAGE_TYPE_ID = 3
 TIME_COVERAGE_TYPE_ID = 4
+COVERAGE_TYPES = [
+    BUILDING_COVERAGE_TYPE_ID,
+    OTHER_BUILDING_COVERAGE_TYPE_ID,
+    CONTENTS_COVERAGE_TYPE_ID,
+    TIME_COVERAGE_TYPE_ID]
 
 PERIL_WIND = 1
-
-REINS_TYPE_FAC = "FAC"
-REINS_TYPE_CAT_XL = "CAT XL"
-
-REINS_ATTACHMENT_BASIS_LOCATION = "LO"
+PERILS = [PERIL_WIND]
 
 GUL_INPUTS_FILES = [
     'coverages',
@@ -65,6 +68,15 @@ CONVERSION_TOOLS = {
     'fmsummaryxref': '../ktools/fmsummaryxreftobin',
     'gulsummaryxref': '../ktools/gulsummaryxreftobin',
     'items': "../ktools/itemtobin"}
+
+#
+# OED constants
+##
+
+REINS_TYPE_FAC = "FAC"
+REINS_TYPE_CAT_XL = "CAT XL"
+
+REINS_ATTACHMENT_BASIS_LOCATION = "LO"
 
 # Subset of the fields that are currently used
 OED_ACCOUNT_FIELDS = [
@@ -109,14 +121,9 @@ OED_REINS_SCOPE_FIELDS = [
     'CededAmount'
 ]
 
-COVERAGE_TYPES = [
-    BUILDING_COVERAGE_TYPE_ID,
-    OTHER_BUILDING_COVERAGE_TYPE_ID,
-    CONTENTS_COVERAGE_TYPE_ID,
-    TIME_COVERAGE_TYPE_ID]
-
-PERILS = [PERIL_WIND]
-
+#
+# Data structures
+#
 Item = namedtuple(
     "Item", "item_id coverage_id areaperil_id vulnerability_id group_id")
 Coverage = namedtuple(
@@ -140,10 +147,11 @@ XrefDescription = namedtuple(
 GulRecord = namedtuple(
     "GulRecord", "event_id item_id sidx loss")
 
-# Generate the policy and reinsurance data stuctures
+
 class DirectLayer(object):
     """
     Set of direct policiies.
+    Generates ktools inputs and runs financial module.
     """
     def __init__(self, accounts, locations):
         self.accounts = accounts
@@ -362,6 +370,10 @@ class DirectLayer(object):
         return losses_df
 
 class ReinsuranceLayer(object):
+    """
+    Set of reinsuarnce layers at the same priority.
+    Generates ktools inputs and runs financial module.
+    """
 
     def __init__(
         self, name, ri_info, ri_scope, accounts, locations, items, coverages, xref_descriptions):
@@ -386,8 +398,6 @@ class ReinsuranceLayer(object):
     def generate_oasis_structures(self):
 
         level_1_agg_id = 0
-        level_2_agg_id = 0
-        level_3_agg_id = 0
         layer_tc_id = 0
         layer_layer_id = 0
 
@@ -479,7 +489,7 @@ class ReinsuranceLayer(object):
                     limit_prop_of_loss=0.0,         # Not used
                     deductible_prop_of_tiv=0.0,     # Not used
                     limit_prop_of_tiv=0.0,          # Not used
-                    deductible_prop_of_limit=0.0    # Not usedfmcalc -p ri1 < ils.bin | tee ri1.bin | fmtocsv
+                    deductible_prop_of_limit=0.0    # Not used
                 ))
 
             fm_policytcs_list.append(FmPolicyTc(
@@ -500,13 +510,6 @@ class ReinsuranceLayer(object):
                             )
                         )
                 elif layer.ReinsType == REINS_TYPE_FAC:
-                    # With filter?
-                    location_scope = pd.merge(
-                        left=self.ri_scope, right=self.locations,
-                        left_on=['AccountNumber', 'LocationNumber'],
-                        right_on=['AccountNumber', 'LocationNumber'],
-                        )
-
                     for __, xref_description in self.xref_descriptions.iterrows():
                         if (
                             xref_description.location_number == layer.LocationNumber and
@@ -605,6 +608,9 @@ class ReinsuranceLayer(object):
 
 
 def load_oed_dfs(oed_dir, show_all=False):
+    """
+    Load OED data files.
+    """
 
     if oed_dir is not None:
         if not os.path.exists(oed_dir):
@@ -647,6 +653,10 @@ def load_oed_dfs(oed_dir, show_all=False):
     return (account_df, location_df, ri_info_df, ri_scope_df)
 
 def run_test(run_name, account_df, location_df, ri_info_df, ri_scope_df, loss_factor):
+    """
+    Run the direct and reinsurance layers through the Oasis FM.abs
+    Returns an array of net loss data frames, the first for the direct layers and then one per inuring layer.
+    """
 
     if os.path.exists(run_name):
         shutil.rmtree(run_name)

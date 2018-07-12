@@ -1,7 +1,8 @@
 import pandas as pd
 import os
 import subprocess
-from common import *
+import shutil
+import common
 
 class DirectLayer(object):
     """
@@ -26,10 +27,10 @@ class DirectLayer(object):
 
     def _get_location_tiv(self, location, coverage_type_id):
         switcher = {
-            BUILDING_COVERAGE_TYPE_ID: location.BuildingTIV,
-            OTHER_BUILDING_COVERAGE_TYPE_ID: location.OtherTIV,
-            CONTENTS_COVERAGE_TYPE_ID: location.ContentsTIV,
-            TIME_COVERAGE_TYPE_ID: location.BITIV
+            common.BUILDING_COVERAGE_TYPE_ID: location.BuildingTIV,
+            common.OTHER_BUILDING_COVERAGE_TYPE_ID: location.OtherTIV,
+            common.CONTENTS_COVERAGE_TYPE_ID: location.ContentsTIV,
+            common.TIME_COVERAGE_TYPE_ID: location.BITIV
         }
         return switcher.get(coverage_type_id, 0)
 
@@ -39,7 +40,7 @@ class DirectLayer(object):
         item_id = 0
         group_id = 0
         policy_agg_id = 0
-        policytc_id = 0
+        profile_id = 0
 
         coverages_list = list()
         items_list = list()
@@ -52,81 +53,63 @@ class DirectLayer(object):
         site_agg_id = 0
         for policy_index, policy in self.accounts.iterrows():
             policy_agg_id = policy_agg_id + 1
-            policytc_id = policytc_id + 1
-            fmprofiles_list.append(FmProfile(
-                policytc_id=policytc_id,
-                calcrule_id=DEDUCTIBLE_AND_LIMIT_CALCRULE_ID,
-                ccy_id=-1,
-                allocrule_id=ALLOCATE_TO_ITEMS_BY_GUL_ALLOC_ID,
-                deductible=policy.Ded6,
-                limit=policy.Limit6,
-                share_prop_of_lim=0.0,          # Not used
-                deductible_prop_of_loss=0.0,    # Not used
-                limit_prop_of_loss=0.0,         # Not used
-                deductible_prop_of_tiv=0.0,     # Not used
-                limit_prop_of_tiv=0.0,          # Not used
-                deductible_prop_of_limit=0.0    # Not used
-            ))
-            fm_policytcs_list.append(FmPolicyTc(
+            profile_id = profile_id + 1
+            fmprofiles_list.append(
+                common.get_profile(
+                    profile_id, 
+                    deductible=policy.Ded6,
+                    limit=policy.Limit6))
+            fm_policytcs_list.append(common.FmPolicyTc(
                 layer_id=1,
                 level_id=2,
                 agg_id=policy_agg_id,
-                policytc_id=policytc_id
+                profile_id=profile_id
             ))
             for location_index, location in self.locations.loc[self.locations["AccountNumber"] == policy.AccountNumber].iterrows():
                 group_id = group_id + 1
                 site_agg_id = site_agg_id + 1
-                policytc_id = policytc_id + 1
-                fm_policytcs_list.append(FmPolicyTc(
+                profile_id = profile_id + 1
+                fm_policytcs_list.append(common.FmPolicyTc(
                     layer_id=1,
                     level_id=1,
                     agg_id=site_agg_id,
-                    policytc_id=policytc_id
+                    profile_id=profile_id
                 ))
 
-                fmprofiles_list.append(FmProfile(
-                    policytc_id=policytc_id,
-                    calcrule_id=DEDUCTIBLE_AND_LIMIT_CALCRULE_ID,
-                    ccy_id=-1,
-                    allocrule_id=ALLOCATE_TO_ITEMS_BY_GUL_ALLOC_ID,
-                    deductible=location.Ded6,
-                    limit=location.Limit6,
-                    share_prop_of_lim=0.0,          # Not used
-                    deductible_prop_of_loss=0.0,    # Not used
-                    limit_prop_of_loss=0.0,         # Not used
-                    deductible_prop_of_tiv=0.0,     # Not used
-                    limit_prop_of_tiv=0.0,          # Not used
-                    deductible_prop_of_limit=0.0    # Not used
-                ))
-                fm_policytcs_list.append(FmPolicyTc(
+                fmprofiles_list.append(
+                    common.get_profile(
+                        profile_id=profile_id,
+                        deductible=location.Ded6,
+                        limit=location.Limit6))
+                fm_policytcs_list.append(common.FmPolicyTc(
                     layer_id=1,
                     level_id=1,
                     agg_id=site_agg_id,
-                    policytc_id=policytc_id
+                    profile_id=profile_id
                 ))
                 fmprogrammes_list.append(
-                    FmProgramme(
+                    common.FmProgramme(
                         from_agg_id=site_agg_id,
                         level_id=2,
                         to_agg_id=policy_agg_id
                     )
                 )
 
-                for coverage_type_id in COVERAGE_TYPES:
+                for coverage_type_id in common.COVERAGE_TYPES:
                     tiv = self._get_location_tiv(location, coverage_type_id)
                     if tiv > 0:
                         coverage_id = coverage_id + 1
                         coverages_list.append(
-                            Coverage(
+                            common.Coverage(
                                 coverage_id=coverage_id,
                                 tiv=tiv
                             ))
-                        for peril in PERILS:
+                        for peril in common.PERILS:
                             item_id = item_id + 1
                             self.item_ids.append(item_id)
                             self.item_tivs.append(tiv)
                             items_list.append(
-                                Item(
+                                common.Item(
                                     item_id=item_id,
                                     coverage_id=coverage_id,
                                     areaperil_id=-1,
@@ -134,28 +117,29 @@ class DirectLayer(object):
                                     group_id=group_id
                                 ))
                             fmprogrammes_list.append(
-                                FmProgramme(
+                                common.FmProgramme(
                                     from_agg_id=item_id,
                                     level_id=1,
                                     to_agg_id=site_agg_id
                                 )
                             )
                             fm_xrefs_list.append(
-                                FmXref(
+                                common.FmXref(
                                     output_id=item_id,
                                     agg_id=item_id,
                                     layer_id=1
                                 ))
-                            xref_descriptions_list.append(XrefDescription(
-                                xref_id=item_id,
-                                account_number=location.AccountNumber,
-                                location_number=location.LocationNumber,
-                                coverage_type_id=coverage_type_id,
-                                peril_id=peril,
-                                policy_number=policy.PolicyNumber,
-                                tiv=tiv
-                            )
-                            )
+                            xref_descriptions_list.append(
+                                common.XrefDescription(
+                                    xref_id=item_id,
+                                    account_number=location.AccountNumber,
+                                    location_number=location.LocationNumber,
+                                    coverage_type_id=coverage_type_id,
+                                    peril_id=peril,
+                                    policy_number=policy.PolicyNumber,
+                                    tiv=tiv
+                                )
+                                )
 
         self.coverages = pd.DataFrame(coverages_list)
         self.items = pd.DataFrame(items_list)
@@ -178,10 +162,10 @@ class DirectLayer(object):
         if os.path.exists(directory):
             shutil.rmtree(directory)
         os.mkdir(directory)
-        input_files = GUL_INPUTS_FILES + IL_INPUTS_FILES
+        input_files = common.GUL_INPUTS_FILES + common.IL_INPUTS_FILES
 
         for input_file in input_files:
-            conversion_tool = CONVERSION_TOOLS[input_file]
+            conversion_tool = common.CONVERSION_TOOLS[input_file]
             input_file_path = input_file + ".csv"
             if not os.path.exists(input_file_path):
                 continue
@@ -200,16 +184,16 @@ class DirectLayer(object):
         for item_id, tiv in zip(self.item_ids, self.item_tivs):
             event_loss = loss_percentage_of_tiv * tiv
             guls_list.append(
-                GulRecord(event_id=1, item_id=item_id, sidx=-1, loss=event_loss))
+                common.GulRecord(event_id=1, item_id=item_id, sidx=-1, loss=event_loss))
             guls_list.append(
-                GulRecord(event_id=1, item_id=item_id, sidx=1, loss=event_loss))
+                common.GulRecord(event_id=1, item_id=item_id, sidx=1, loss=event_loss))
         guls_df = pd.DataFrame(guls_list)
         guls_df.to_csv("guls.csv", index=False)
         net_flag = ""
         if net:
             net_flag = "-n"
-        command = "../ktools/gultobin -S 1 < guls.csv | ../ktools/fmcalc -p direct {} | tee ils.bin | ../ktools/fmtocsv > ils.csv".format(
-            net_flag)
+        command = "../ktools/gultobin -S 1 < guls.csv | ../ktools/fmcalc -p direct {} -a {} | tee ils.bin | ../ktools/fmtocsv > ils.csv".format( 
+            net_flag, common.ALLOCATE_TO_ITEMS_BY_PREVIOUS_LEVEL_ALLOC_ID)
         print(command)
         proc = subprocess.Popen(command, shell=True)
         proc.wait()

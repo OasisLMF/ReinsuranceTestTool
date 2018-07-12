@@ -1,5 +1,6 @@
 from collections import namedtuple
 
+
 #
 # Ktools constants
 #
@@ -14,6 +15,33 @@ DEDUCTIBLE_WITH_LIMIT_AS_A_PROPORTION_OF_LOSS_CALCRUKE_ID = 9
 LIMIT_ONLY_CALCRULE_ID = 14
 LIMIT_AS_A_PROPORTION_OF_LOSS_CALCRULE_ID = 15
 DEDUCTIBLE_AS_A_PROPORTION_OF_LOSS_CALCRULE_ID = 16
+
+
+CALCRULE_ID_DEDUCTIBLE_AND_LIMIT = 1
+CALCRULE_ID_DEDUCTIBLE_ATTACHMENT_LIMIT_AND_SHARE = 2
+CALCRULE_ID_FRANCHISE_DEDUCTIBLE_AND_LIMIT = 3
+CALCRULE_ID_DEDUCTIBLE_AND_LIMIT_PERCENT_TIV = 4
+CALCRULE_ID_DEDUCTIBLE_AND_LIMIT_PERCENT_LOSS = 5
+CALCRULE_ID_DEDUCTIBLE_PERCENT_TIV = 6
+CALCRULE_ID_LIMIT_AND_MAX_DEDUCTIBLE = 7
+CALCRULE_ID_LIMIT_AND_MIN_DEDUCTIBLE = 8
+CALCRULE_ID_LIMIT_WITH_DEDUCTIBLE_PERCENT_LIMIT = 9
+CALCRULE_ID_MAX_DEDUCTIBLE = 10
+CALCRULE_ID_MIN_DEDUCTIBLE = 11
+CALCRULE_ID_DEDUCTIBLE_ONLY = 12
+CALCRULE_ID_MAIN_AND_MAX_DEDUCTIBLE = 13
+CALCRULE_ID_LIMIT_ONLY = 14
+CALCRULE_ID_LIMIT_PERCENT_LOSS = 15
+CALCRULE_ID_DEDUCTIBLE_PERCENT_LOSS = 16
+CALCRULE_ID_DEDUCTIBLE_PERCENT_LOSS_ATTACHMENT_LIMIT_AND_SHARE = 17
+CALCRULE_ID_DEDUCTIBLE_PERCENT_TIV_ATTACHMENT_LIMIT_AND_SHARE = 18
+CALCRULE_ID_DEDUCTIBLE_PERCENT_LOSS_WITH_MIN_AND_MAX = 19
+CALCRULE_ID_REVERSE_FRANCHISE_DEDUCTIBLE = 20
+CALCRULE_ID_SHARE_AND_LIMIT = 21
+CALCRULE_ID_QUOTA_SHARE = 22
+CALCRULE_ID_OCCURRENCE_LIMIT_AND_SHARE = 23
+CALCRULE_ID_OCCURRENCE_CATASTROPHE_EXCESS_OF_LOSS = 24
+CALCRULE_ID_FACULTATIVE_WITH_POLICY_SHARE = 25
 
 NO_ALLOCATION_ALLOC_ID = 0
 ALLOCATE_TO_ITEMS_BY_GUL_ALLOC_ID = 1
@@ -59,8 +87,8 @@ CONVERSION_TOOLS = {
     'items': "../ktools/itemtobin"}
 
 NOT_SET_ID = -1
+LARGE_VALUE = 999999999999999
 
-#
 # OED constants
 ##
 
@@ -85,6 +113,13 @@ REINS_RISK_LEVEL_LOCATION = "LOC"
 #REINS_RISK_LEVEL_LOCATION_GROUP = "Location Group"
 REINS_RISK_LEVEL_POLICY = "POL"
 REINS_RISK_LEVEL_ACCOUNT = "ACC"
+REINS_RISK_LEVELS = [
+    REINS_RISK_LEVEL_LOCATION,
+    REINS_RISK_LEVEL_POLICY,
+    REINS_RISK_LEVEL_ACCOUNT,
+    REINS_RISK_LEVEL_PORTFOLIO,
+]
+
 
 # Subset of the fields that are currently used
 OED_ACCOUNT_FIELDS = [
@@ -137,11 +172,9 @@ Coverage = namedtuple(
 FmProgramme = namedtuple(
     "FmProgramme", "from_agg_id level_id to_agg_id")
 FmProfile = namedtuple(
-    "FmProfile", "policytc_id calcrule_id allocrule_id ccy_id deductible limit " +
-    "share_prop_of_lim deductible_prop_of_loss limit_prop_of_loss deductible_prop_of_tiv " +
-    "limit_prop_of_tiv deductible_prop_of_limit")
+    "FmProfile", "profile_id calcrule_id deductible1 deductible2 deductible3 attachment limit share1 share2 share3")
 FmPolicyTc = namedtuple(
-    "FmPolicyTc", "layer_id level_id agg_id policytc_id")
+    "FmPolicyTc", "layer_id level_id agg_id profile_id")
 GulSummaryXref = namedtuple(
     "GulSummaryXref", "coverage_id summary_id summaryset_id")
 FmSummaryXref = namedtuple(
@@ -152,3 +185,57 @@ XrefDescription = namedtuple(
     "Description", ("xref_id policy_number account_number location_number coverage_type_id peril_id tiv"))
 GulRecord = namedtuple(
     "GulRecord", "event_id item_id sidx loss")
+
+def get_no_loss_profile(profile_id):
+    return FmProfile(
+        profile_id=profile_id,
+        calcrule_id=CALCRULE_ID_LIMIT_ONLY,
+        deductible1=0,  # Not used
+        deductible2=0,  # Not used
+        deductible3=0,  # Not used
+        attachment=0,   # Not used
+        limit=0,
+        share1=0,       # Not used
+        share2=0,       # Not used
+        share3=0        # Not used
+        )
+
+def get_pass_through_profile(profile_id):
+    return FmProfile(
+        profile_id=profile_id,
+        calcrule_id=CALCRULE_ID_DEDUCTIBLE_ONLY,
+        deductible1=0,
+        deductible2=0,  # Not used
+        deductible3=0,  # Not used
+        attachment=0,   # Not used
+        limit=0,        # Not used
+        share1=0,       # Not used
+        share2=0,       # Not used
+        share3=0        # Not used
+        )
+
+def get_profile(
+    profile_id,
+    deductible=0,
+    attachment=0,
+    limit=0,
+    share=1.0
+    ):
+    
+    if limit == 0:
+        limit = LARGE_VALUE
+
+    return FmProfile(
+        profile_id=profile_id,
+        calcrule_id=CALCRULE_ID_DEDUCTIBLE_ATTACHMENT_LIMIT_AND_SHARE,
+        deductible1=deductible,
+        deductible2=0,  # Not used
+        deductible3=0,  # Not used
+        attachment=attachment,
+        limit=limit,
+        share1=share,
+        share2=0,       # Not used
+        share3=0        # Not used
+        )
+
+

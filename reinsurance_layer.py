@@ -238,6 +238,21 @@ class ReinsuranceLayer(object):
             (add_profiles_args.program_node.name, add_profiles_args.layer_id)] = profile_id
 
 
+    def _add_cat_xl_profiles(self, add_profiles_args):
+
+        profile_id = max(x.profile_id for x in add_profiles_args.fmprofiles_list)
+        profile_id = profile_id + 1
+        add_profiles_args.fmprofiles_list.append(
+            common.get_profile(
+                profile_id,
+                attachment=add_profiles_args.ri_info_row.OccurenceAttachmentPoint,
+                limit=add_profiles_args.ri_info_row.OccLimit,
+                share=add_profiles_args.ri_info_row.CededPercent
+                ))
+        add_profiles_args.node_layer_profile_map[
+            (add_profiles_args.program_node.name, add_profiles_args.layer_id)] = profile_id
+
+
     def generate_oasis_structures(self):
 
         fmprogrammes_list = list()
@@ -284,12 +299,15 @@ class ReinsuranceLayer(object):
                 self._add_fac_profiles(add_profiles_args)
             elif ri_info_row.ReinsType == common.REINS_TYPE_QUOTA_SHARE:
                 self._add_quota_share_profiles(add_profiles_args)
+            elif ri_info_row.ReinsType == common.REINS_TYPE_CAT_XL:
+                self._add_cat_xl_profiles(add_profiles_args)
             else:
                 raise Exception("ReinsType not supported yet: {}".format(
                     ri_info_row.ReinsType))
 
-        max_layer_id = layer_id
-
+        #
+        # Generate the FmProgrammes and FmPolicyTcs
+        #
         for node in anytree.iterators.LevelOrderIter(program_node):
             if node.parent is not None:
                 fmprogrammes_list.append(
@@ -299,7 +317,7 @@ class ReinsuranceLayer(object):
                         to_agg_id=node.parent.agg_id
                     )
                 )
-
+        max_layer_id = layer_id
         for layer_id in range(1, max_layer_id + 1):
             for node in anytree.iterators.LevelOrderIter(program_node):
                 if node.level_id > 1:

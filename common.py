@@ -87,7 +87,7 @@ CONVERSION_TOOLS = {
     'items': "../ktools/itemtobin"}
 
 NOT_SET_ID = -1
-LARGE_VALUE = 999999999999999
+LARGE_VALUE = 9999999999999
 
 # OED constants
 ##

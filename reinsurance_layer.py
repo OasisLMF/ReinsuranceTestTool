@@ -4,25 +4,20 @@ import subprocess
 import anytree
 import shutil
 import common
+from collections import namedtuple
+
+
+def validate_reinsurance_structures(ri_info_df, ri_scope_df):
+    pass
 
 class ReinsuranceLayer(object):
     """
-    Set of reinsuarnce layers at the same priority.
-    Generates ktools inputs and runs financial module.
+    Generates ktools inputs and runs financial module for a
+    set of reinsurance layers.
     """
 
-    def __init__(
-            self, 
-            name, 
-            ri_info, 
-            ri_scope, 
-            accounts, 
-            locations, 
-            items, 
-            coverages, 
-            fm_xrefs, 
-            xref_descriptions,
-            risk_level):
+    def __init__(self, name, ri_info, ri_scope, accounts, locations, 
+                items, coverages, fm_xrefs, xref_descriptions, risk_level):
 
         self.name = name
         self.accounts = accounts
@@ -44,22 +39,206 @@ class ReinsuranceLayer(object):
         self.ri_info = ri_info
         self.ri_scope = ri_scope
 
-    def generate_oasis_structures(self):
+        self.add_profiles_args = namedtuple(
+            "AddProfilesArgs", 
+            "program_node, ri_info_row, scope_rows, layer_id, " \
+            "node_layer_profile_map, fmprofiles_list, nolossprofile_id, passthroughprofile_id")
 
-        program_node = anytree.Node(
+    def _add_program_node(self, level_id):
+        return anytree.Node(
             "Occurrence",
-            level=common.OCCURRENCE_LEVEL,
+            parent=None,
+            level_id=level_id,
+            agg_id=1,
             account_number=common.NOT_SET_ID,
             policy_number=common.NOT_SET_ID,
             location_number=common.NOT_SET_ID)
 
+    def _add_item_node(self, xref_id, parent):
+        return anytree.Node(
+            "Item_id:{}".format(xref_id),
+            parent=parent,
+            level_id=1,
+            agg_id=xref_id,
+            account_number=common.NOT_SET_ID,
+            policy_number=common.NOT_SET_ID,
+            location_number=common.NOT_SET_ID)
+
+    def _add_location_node(
+        self, level_id, agg_id, xref_description, parent):
+        return anytree.Node(
+            "Account_number:{} Policy_number:{} Location_number:{}".format(
+                xref_description.account_number, 
+                xref_description.policy_number, 
+                xref_description.location_number),
+            parent=parent,
+            level_id=level_id,
+            agg_id=agg_id,
+            account_number=xref_description.account_number,
+            policy_number=xref_description.policy_number,
+            location_number=xref_description.location_number)
+
+    def _add_policy_node(
+        self, level_id, agg_id, xref_description, parent):
+        return anytree.Node(
+            "Account_number:{} Policy_number:{}".format(
+                xref_description.account_number, xref_description.policy_number),
+            parent=parent,
+            level_id=level_id,
+            agg_id=agg_id,
+            account_number=xref_description.account_number,
+            policy_number=xref_description.policy_number,
+            location_number=common.NOT_SET_ID)
+
+    def _add_account_node(
+        self, agg_id, level_id, xref_description, parent):
+        return anytree.Node(
+            "Account_number:{}".format(xref_description.account_number),
+            parent=parent,
+            level_id=level_id,
+            agg_id=agg_id,
+            account_number=xref_description.account_number,
+            policy_number=common.NOT_SET_ID,
+            location_number=common.NOT_SET_ID)
+
+    def _does_location_node_match_scope_row(self, node, ri_scope_row):
+        node_summary = (node.account_number, node.policy_number, node.location_number)
+        scope_row_summary = (ri_scope_row.AccountNumber, ri_scope_row.PolicyNumber, ri_scope_row.LocationNumber)
+        return (node_summary == scope_row_summary)
+
+    def _does_policy_node_match_scope_row(self, node, ri_scope_row):
+        node_summary = (node.account_number, node.policy_number, node.location_number)
+        scope_row_summary = (ri_scope_row.AccountNumber, ri_scope_row.PolicyNumber, common.NOT_SET_ID)
+        return (node_summary == scope_row_summary)
+
+    def _does_account_node_match_scope_row(self, node, ri_scope_row):
+        node_summary = (node.account_number, node.policy_number, node.location_number)
+        scope_row_summary = (ri_scope_row.AccountNumber, common.NOT_SET_ID, common.NOT_SET_ID)
+        return (node_summary == scope_row_summary)
+
+    def _get_tree(self):
         current_location_number = 0
         current_policy_number = 0
         current_account_number = 0
-
         current_location_node = None
         current_policy_node = None
         current_account_node = None
+
+        program_node_level_id = 3
+        if self.risk_level == common.REINS_RISK_LEVEL_PORTFOLIO:
+            program_node_level_id = 2
+        program_node = self._add_program_node(program_node_level_id)
+        xref_descriptions = self.xref_descriptions.sort_values(
+            by=["location_number", "policy_number", "account_number"])
+
+        agg_id = 0
+        if self.risk_level == common.REINS_RISK_LEVEL_PORTFOLIO:
+            for _, row in xref_descriptions.iterrows():
+                self._add_item_node(row.xref_id, program_node)
+        elif self.risk_level == common.REINS_RISK_LEVEL_ACCOUNT:
+            for _, row in xref_descriptions.iterrows():
+                if current_account_number != row.account_number:
+                    agg_id = agg_id + 1
+                    level_id = 2
+                    current_account_number = row.account_number
+                    current_account_node = self._add_account_node(
+                        agg_id, level_id, row, program_node)
+                self._add_item_node(row.xref_id, current_account_node)
+        elif self.risk_level == common.REINS_RISK_LEVEL_POLICY:
+            for _, row in xref_descriptions.iterrows():
+                if current_policy_number != row.policy_number:
+                    agg_id = agg_id + 1
+                    level_id = 2
+                    current_policy_number = row.policy_number
+                    current_policy_node = self._add_location_node(level_id, agg_id, row, program_node)
+                self._add_item_node(row.xref_id, current_policy_node)
+        elif self.risk_level == common.REINS_RISK_LEVEL_LOCATION:
+            for _, row in xref_descriptions.iterrows():
+                if current_location_number != row.location_number:
+                    agg_id = agg_id + 1
+                    level_id = 2
+                    current_location_number = row.location_number
+                    current_location_node = self._add_location_node(level_id, agg_id, row, program_node)
+                self._add_item_node(row.xref_id, current_location_node)
+        return program_node
+
+    def _add_fac_profiles(self, add_profiles_args):
+        profile_id = max(x.profile_id for x in add_profiles_args.fmprofiles_list)
+
+        for node in anytree.iterators.LevelOrderIter(add_profiles_args.program_node):
+            add_profiles_args.node_layer_profile_map[(node, add_profiles_args.layer_id)] = add_profiles_args.nolossprofile_id
+
+        profile_id = profile_id + 1
+        add_profiles_args.fmprofiles_list.append(common.get_profile(
+            profile_id,
+            attachment=add_profiles_args.ri_info_row.RiskAttachmentPoint,
+            limit=add_profiles_args.ri_info_row.RiskLimit
+            ))
+
+        for _, ri_scope_row in add_profiles_args.scope_rows.iterrows():
+            if ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_LOCATION:
+                nodes = anytree.search.findall(
+                    add_profiles_args.program_node, 
+                    filter_= lambda node: self._does_location_node_match_scope_row(node, ri_scope_row))                            
+                for node in nodes:
+                    add_profiles_args.node_layer_profile_map[(
+                        node, add_profiles_args.layer_id)] = profile_id
+                    for child in anytree.iterators.LevelOrderIter(node):
+                        add_profiles_args.node_layer_profile_map[(
+                            child, add_profiles_args.layer_id)] = add_profiles_args.nolossprofile_id
+                    parent = node.parent
+                    while parent != add_profiles_args.program_node:
+                        add_profiles_args.node_layer_profile_map[(
+                            parent, add_profiles_args.layer_id)] = add_profiles_args.nolossprofile_id
+            elif ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_POLICY:
+                nodes = anytree.search.findall(
+                    add_profiles_args.program_node, 
+                    filter_=lambda node: self._does_policy_node_match_scope_row(node, ri_scope_row))
+                for node in nodes:
+                    add_profiles_args.node_layer_profile_map[(
+                        node, add_profiles_args.layer_id)] = profile_id
+            elif ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_ACCOUNT:
+                nodes = anytree.search.findall(
+                    add_profiles_args.program_node, 
+                    filter_=lambda node: self._does_account_node_match_scope_row(node, ri_scope_row))
+                for node in nodes:
+                    add_profiles_args.node_layer_profile_map[(
+                        node, add_profiles_args.layer_id)] = profile_id
+            else:
+                raise Exception(
+                    "Unsupported risk level: {}".format(ri_scope_row.RiskLevel))
+
+    def _add_quota_share_profiles(self, add_profiles_args):
+        profile_id = max(x.profile_id for x in add_profiles_args.fmprofiles_list)
+
+        # Add any risk limits
+        if self.risk_level == common.REINS_RISK_LEVEL_PORTFOLIO:
+            pass
+        else:
+            profile_id = profile_id + 1
+            add_profiles_args.fmprofiles_list.append(
+                common.get_profile(
+                    profile_id,
+                    limit=add_profiles_args.ri_info_row.RiskLimit
+            ))
+            nodes = anytree.search.findall(
+                add_profiles_args.program_node, filter_=lambda node: node.level_id == 2)
+            for node in nodes:
+                add_profiles_args.node_layer_profile_map[(node.name, add_profiles_args.layer_id)] = profile_id
+
+        # Add occurrence limit and share
+        profile_id = profile_id + 1
+        add_profiles_args.fmprofiles_list.append(
+            common.get_profile(
+                profile_id,
+                limit=add_profiles_args.ri_info_row.OccLimit,
+                share=add_profiles_args.ri_info_row.CededPercent
+                ))
+        add_profiles_args.node_layer_profile_map[
+            (add_profiles_args.program_node.name, add_profiles_args.layer_id)] = profile_id
+
+
+    def generate_oasis_structures(self):
 
         fmprogrammes_list = list()
         fmprofiles_list = list()
@@ -78,191 +257,33 @@ class ReinsuranceLayer(object):
             common.get_pass_through_profile(passthroughprofile_id))
             
         node_layer_profile_map = {}
-        nodes = ()
-
-        program_node_level_id = 3
-        if self.risk_level == common.REINS_RISK_LEVEL_PORTFOLIO:
-            program_node_level_id = 2
-        program_node = anytree.Node(
-            "Occurrence",
-            parent=None,
-            level_id=program_node_level_id,
-            agg_id=1,
-            account_number=common.NOT_SET_ID,
-            policy_number=common.NOT_SET_ID,
-            location_number=common.NOT_SET_ID)
-
-        xref_descriptions = self.xref_descriptions.sort_values(
-            by=["location_number", "policy_number", "account_number"])
-
-        agg_id = 0
-        if self.risk_level == common.REINS_RISK_LEVEL_PORTFOLIO:
-            for _, row in xref_descriptions.iterrows():
-                anytree.Node(
-                    "Item_id:{}".format(row.xref_id),
-                    parent=program_node,
-                    level_id=1,
-                    agg_id=row.xref_id,
-                    account_number=common.NOT_SET_ID,
-                    policy_number=common.NOT_SET_ID,
-                    location_number=common.NOT_SET_ID)
-        elif self.risk_level == common.REINS_RISK_LEVEL_ACCOUNT:
-            for _, row in xref_descriptions.iterrows():
-                if current_account_number != row.AccountNumber:
-                    agg_id = agg_id + 1
-                    current_account_number = row.AccountNumber
-                    current_account_node = anytree.Node(
-                        "Account_number:{}".format(row.account_number),
-                        parent=program_node,
-                        level_id=2,
-                        agg_id=agg_id,
-                        account_number=row.AccountNumber,
-                        policy_number=common.NOT_SET_ID,
-                        location_number=common.NOT_SET_ID)
-                anytree.Node(
-                    "Item_id:{}".format(row.xref_id),
-                    parent=current_account_node,
-                    level_id=1,
-                    agg_id=row.xref_id,
-                    account_number=common.NOT_SET_ID,
-                    policy_number=common.NOT_SET_ID,
-                    location_number=common.NOT_SET_ID)
-        elif self.risk_level == common.REINS_RISK_LEVEL_POLICY:
-            for _, row in xref_descriptions.iterrows():
-                if current_policy_number != row.PolicyNumber:
-                    agg_id = agg_id + 1
-                    current_policy_number = row.PolicyNumber
-                    current_policy_node = anytree.Node(
-                        "Account_number:{} Policy_number:{}".format(
-                            row.account_number, row.policy_number),
-                        parent=program_node,
-                        level_id=2,
-                        agg_id=agg_id,
-                        account_number=row.AccountNumber,
-                        policy_number=row.PolicyNumber,
-                        location_number=common.NOT_SET_ID)
-                anytree.Node(
-                    "Item_id:{}".format(row.xref_id),
-                    parent=current_policy_node,
-                    level_id=1,
-                    agg_id=row.xref_id,
-                    account_number=common.NOT_SET_ID,
-                    policy_number=common.NOT_SET_ID,
-                    location_number=common.NOT_SET_ID)
-        elif self.risk_level == common.REINS_RISK_LEVEL_LOCATION:
-            for _, row in xref_descriptions.iterrows():
-                if current_location_number != row.location_number:
-                    agg_id = agg_id + 1
-                    current_location_number = row.location_number
-                    current_location_node = anytree.Node(
-                        "Account_number:{} Policy_number:{} Location_number:{}".format(
-                            row.account_number, row.policy_number, row.location_number),
-                        parent=program_node,
-                        level_id=2,
-                        agg_id=agg_id,
-                        account_number=row.account_number,
-                        policy_number=row.policy_number,
-                        location_number=row.location_number)
-                anytree.Node(
-                    "Item_id:{}".format(row.xref_id),
-                    parent=current_location_node,
-                    level_id=1,
-                    agg_id=row.xref_id,
-                    account_number=common.NOT_SET_ID,
-                    policy_number=common.NOT_SET_ID,
-                    location_number=common.NOT_SET_ID)
 
         #
-        # Overlay the reinsuarnce structure
+        # Build the tree representation of the program
+        #
+        program_node = self._get_tree()
+
+        #
+        # Overlay the reinsurance structure
         #
         layer_id = 0
         for _, ri_info_row in self.ri_info.iterrows():
             layer_id = layer_id + 1
+
             scope_rows = self.ri_scope[
                 (self.ri_scope.ReinsNumber == ri_info_row.ReinsNumber) &
                 (self.ri_scope.RiskLevel == self.risk_level)]
-            if scope_rows.shape[0] == 0:
+            if scope_rows.shape[0] == 0: 
                 continue
+
+            add_profiles_args = self.add_profiles_args(
+                program_node, ri_info_row, scope_rows, layer_id, node_layer_profile_map, 
+                fmprofiles_list, nolossprofile_id, passthroughprofile_id)
+
             if ri_info_row.ReinsType == common.REINS_TYPE_FAC:
-
-                for node in anytree.iterators.LevelOrderIter(program_node):
-                    node_layer_profile_map[(node, layer_id)] = nolossprofile_id
-
-                profile_id = profile_id + 1
-                fmprofiles_list.append(common.get_profile(
-                    profile_id,
-                    attachment=ri_info_row.RiskAttachmentPoint,
-                    limit=ri_info_row.RiskLimit
-                    ))
-
-                for ri_scope_index, ri_scope_row in scope_rows.iterrows():
-                    if ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_LOCATION:
-                        nodes = anytree.search.findall(
-                            program_node, filter_=lambda node:
-                            (node.account_number, node.policy_number, node.location_number) == (ri_scope_row.AccountNumber, ri_scope_row.PolicyNumber, ri_scope_row.LocationNumbe))
-                        for node in nodes:
-                            node_layer_profile_map[(
-                                node, layer_id)] = profile_id
-                            for child in anytree.iterators.LevelOrderIter(node):
-                                node_layer_profile_map[(
-                                    child, layer_id)] = nolossprofile_id
-                            parent = node.parent
-                            while parent != program_node:
-                                node_layer_profile_map[(
-                                    parent, layer_id)] = nolossprofile_id
-                    elif ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_POLICY:
-                        nodes = anytree.search.findall(
-                            program_node, filter_=lambda node:
-                                (node.account_number, node.policy_number, node.location_number) == (ri_scope_row.AccountNumber, ri_scope_row.PolicyNumber, common.NOT_SET_ID))
-                        for node in nodes:
-                            node_layer_profile_map[(
-                                node, layer_id)] = profile_id
-                    elif ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_ACCOUNT:
-                        nodes = anytree.search.findall(
-                            program_node, filter_=lambda node:
-                                (node.account_number, node.policy_number, node.location_number) == (ri_scope_row.AccountNumber, common.NOT_SET_ID, common.NOT_SET_ID))
-                        for node in nodes:
-                            node_layer_profile_map[(
-                                node, layer_id)] = profile_id
-                    else:
-                        raise Exception(
-                            "Unsupported risk level: {}".format(ri_scope_row.RiskLevel))
-
+                self._add_fac_profiles(add_profiles_args)
             elif ri_info_row.ReinsType == common.REINS_TYPE_QUOTA_SHARE:
-
-                # Add pass through layer for all nodes
-                # for node in anytree.iterators.LevelOrderIter(program_node):
-                #     node_layer_profile_map[(node, layer_id)] = nolossprofile_id
-                # covered_accounts_all = True
-
-                # Add any risk limits
-                # TODO risk specific limits
-                #risk_level = scope_rows.iloc[0].RiskLevel
-                if self.risk_level == common.REINS_RISK_LEVEL_PORTFOLIO:
-                    pass
-                else:
-                    # Add the risk level terms
-                    profile_id = profile_id + 1
-                    fmprofiles_list.append(
-                        common.get_profile(
-                            profile_id,
-                            limit=ri_info_row.RiskLimit
-                    ))
-                    nodes = anytree.search.findall(
-                        program_node, filter_=lambda node:
-                            node.level_id == 2)
-                    for node in nodes:
-                        node_layer_profile_map[(node.name, layer_id)] = profile_id
-
-                # Add occurrence limit and share
-                profile_id = profile_id + 1
-                fmprofiles_list.append(
-                    common.get_profile(
-                        profile_id,
-                        limit=ri_info_row.OccLimit,
-                        share=ri_info_row.CededPercent
-                        ))
-                node_layer_profile_map[(program_node.name, layer_id)] = profile_id
+                self._add_quota_share_profiles(add_profiles_args)
             else:
                 raise Exception("ReinsType not supported yet: {}".format(
                     ri_info_row.ReinsType))
@@ -289,7 +310,6 @@ class ReinsuranceLayer(object):
                         profile_id=node_layer_profile_map[(node.name, layer_id)]
                     ))
 
-        # Write out ktools input files
         self.fmprogrammes = pd.DataFrame(fmprogrammes_list)
         self.fmprofiles = pd.DataFrame(fmprofiles_list)
         self.fm_policytcs = pd.DataFrame(fm_policytcs_list)
@@ -326,9 +346,7 @@ class ReinsuranceLayer(object):
     def apply_fm(self, input_name):
         command = \
             "../ktools/fmcalc -p {0} -n -a {2} < {1}.bin | tee {0}.bin | ../ktools/fmtocsv > {0}.csv".format(
-#            "../ktools/fmcalc -p {0} -n < {1}.bin | tee {0}.bin | ../ktools/fmtocsv > {0}.csv".format(
                 self.name, input_name, common.ALLOCATE_TO_ITEMS_BY_PREVIOUS_LEVEL_ALLOC_ID)
-        print(command)
         proc = subprocess.Popen(command, shell=True)
         proc.wait()
         if proc.returncode != 0:

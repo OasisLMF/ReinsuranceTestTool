@@ -78,7 +78,6 @@ def run_inuring_level_risk_level(
     reins_numbers_2 = ri_scope_df[
         ri_scope_df.isin({"ReinsNumber": reins_numbers_1}).ReinsNumber &
         (ri_scope_df.RiskLevel == risk_level)].ReinsNumber
-    print(reins_numbers_2.head())
     if len(reins_numbers_2) == 0:
         return None
 

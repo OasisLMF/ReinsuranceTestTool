@@ -107,12 +107,12 @@ class ReinsuranceLayer(object):
         return (node_summary == scope_row_summary)
 
     def _does_policy_node_match_scope_row(self, node, ri_scope_row):
-        node_summary = (node.account_number, node.policy_number, node.location_number)
+        node_summary = (node.account_number, node.policy_number, common.NOT_SET_ID)
         scope_row_summary = (ri_scope_row.AccountNumber, ri_scope_row.PolicyNumber, common.NOT_SET_ID)
         return (node_summary == scope_row_summary)
 
     def _does_account_node_match_scope_row(self, node, ri_scope_row):
-        node_summary = (node.account_number, node.policy_number, node.location_number)
+        node_summary = (node.account_number, common.NOT_SET_ID, common.NOT_SET_ID)
         scope_row_summary = (ri_scope_row.AccountNumber, common.NOT_SET_ID, common.NOT_SET_ID)
         return (node_summary == scope_row_summary)
 
@@ -130,7 +130,6 @@ class ReinsuranceLayer(object):
         program_node = self._add_program_node(program_node_level_id)
         xref_descriptions = self.xref_descriptions.sort_values(
             by=["location_number", "policy_number", "account_number"])
-
         agg_id = 0
         if self.risk_level == common.REINS_RISK_LEVEL_PORTFOLIO:
             for _, row in xref_descriptions.iterrows():
@@ -165,8 +164,13 @@ class ReinsuranceLayer(object):
     def _add_fac_profiles(self, add_profiles_args):
         profile_id = max(x.profile_id for x in add_profiles_args.fmprofiles_list)
 
+        #
+        # Add pass through nodes at all levels so that the risks
+        # not covered by the FAC are unaffected 
+        #
         for node in anytree.iterators.LevelOrderIter(add_profiles_args.program_node):
-            add_profiles_args.node_layer_profile_map[(node, add_profiles_args.layer_id)] = add_profiles_args.nolossprofile_id
+            add_profiles_args.node_layer_profile_map[(node.name, add_profiles_args.layer_id)] = add_profiles_args.nolossprofile_id
+        add_profiles_args.node_layer_profile_map[(add_profiles_args.program_node.name, add_profiles_args.layer_id)] = add_profiles_args.passthroughprofile_id
 
         profile_id = profile_id + 1
         add_profiles_args.fmprofiles_list.append(common.get_profile(
@@ -174,7 +178,7 @@ class ReinsuranceLayer(object):
             attachment=add_profiles_args.ri_info_row.RiskAttachmentPoint,
             limit=add_profiles_args.ri_info_row.RiskLimit
             ))
-
+        
         for _, ri_scope_row in add_profiles_args.scope_rows.iterrows():
             if ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_LOCATION:
                 nodes = anytree.search.findall(
@@ -182,28 +186,21 @@ class ReinsuranceLayer(object):
                     filter_= lambda node: self._does_location_node_match_scope_row(node, ri_scope_row))                            
                 for node in nodes:
                     add_profiles_args.node_layer_profile_map[(
-                        node, add_profiles_args.layer_id)] = profile_id
-                    for child in anytree.iterators.LevelOrderIter(node):
-                        add_profiles_args.node_layer_profile_map[(
-                            child, add_profiles_args.layer_id)] = add_profiles_args.nolossprofile_id
-                    parent = node.parent
-                    while parent != add_profiles_args.program_node:
-                        add_profiles_args.node_layer_profile_map[(
-                            parent, add_profiles_args.layer_id)] = add_profiles_args.nolossprofile_id
+                        node.name, add_profiles_args.layer_id)] = profile_id
             elif ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_POLICY:
                 nodes = anytree.search.findall(
                     add_profiles_args.program_node, 
                     filter_=lambda node: self._does_policy_node_match_scope_row(node, ri_scope_row))
                 for node in nodes:
                     add_profiles_args.node_layer_profile_map[(
-                        node, add_profiles_args.layer_id)] = profile_id
+                        node.name, add_profiles_args.layer_id)] = profile_id
             elif ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_ACCOUNT:
                 nodes = anytree.search.findall(
                     add_profiles_args.program_node, 
                     filter_=lambda node: self._does_account_node_match_scope_row(node, ri_scope_row))
                 for node in nodes:
                     add_profiles_args.node_layer_profile_map[(
-                        node, add_profiles_args.layer_id)] = profile_id
+                        node.name, add_profiles_args.layer_id)] = profile_id
             else:
                 raise Exception(
                     "Unsupported risk level: {}".format(ri_scope_row.RiskLevel))

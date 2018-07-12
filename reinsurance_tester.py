@@ -69,6 +69,7 @@ def run_inuring_level_risk_level(
     xref_descriptions,
     ri_info_df,
     ri_scope_df,
+    previous_risk_level,
     risk_level):
 
     reins_numbers_1 = ri_info_df[
@@ -84,7 +85,7 @@ def run_inuring_level_risk_level(
     ri_info_inuring_priority_df = ri_info_df[ri_info_df.isin({"ReinsNumber": reins_numbers_2}).ReinsNumber]
 
     reinsurance_layer = ReinsuranceLayer(
-        name="ri{}".format(inuring_priority),
+        name="ri_{}_{}".format(inuring_priority, risk_level),
         ri_info=ri_info_inuring_priority_df,
         ri_scope=ri_scope_df,
         accounts=account_df,
@@ -98,12 +99,12 @@ def run_inuring_level_risk_level(
 
     reinsurance_layer.generate_oasis_structures()
     reinsurance_layer.write_oasis_files() is not None
-    if inuring_priority == 1:
+    if inuring_priority == 1 and previous_risk_level is None:
         reinsurance_layer_losses_df = reinsurance_layer.apply_fm(
             "ils")
     else:
         reinsurance_layer_losses_df = reinsurance_layer.apply_fm(
-            "ri{}".format(inuring_priority - 1))
+            "ri_{}_{}".format(inuring_priority, previous_risk_level))
 
     return reinsurance_layer_losses_df
 
@@ -144,6 +145,7 @@ def run_test(
         net_losses.append(losses_df)
         if do_reinsurance:
             for inuring_priority in range(1, ri_info_df['InuringPriority'].max() + 1):
+                previous_risk_level = None
                 for risk_level in common.REINS_RISK_LEVELS:
                     if ri_scope_df[ri_scope_df.RiskLevel==risk_level].shape[0] == 0:
                         pass             
@@ -155,7 +157,9 @@ def run_test(
                         direct_layer.xref_descriptions,
                         ri_info_df,
                         ri_scope_df,
+                        previous_risk_level,
                         risk_level)
+                    previous_risk_level = risk_level
                     
                     net_losses.append(reinsurance_layer_losses_df)
 

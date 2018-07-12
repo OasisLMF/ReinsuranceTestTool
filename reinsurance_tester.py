@@ -61,6 +61,52 @@ def load_oed_dfs(oed_dir, show_all=False):
                 ri_scope_df = ri_scope_df[OED_REINS_SCOPE_FIELDS].copy()
     return (account_df, location_df, ri_info_df, ri_scope_df, do_reinsuarnce)
 
+def run_inuring_level_risk_level(
+    inuring_priority,
+    items,
+    coverages,
+    fm_xrefs,
+    xref_descriptions,
+    ri_info_df,
+    ri_scope_df,
+    risk_level):
+
+    reins_numbers_1 = ri_info_df[
+            ri_info_df['InuringPriority'] == inuring_priority].ReinsNumber
+    if len(reins_numbers_1) == 0:
+        return None
+    reins_numbers_2 = ri_scope_df[
+        ri_scope_df.isin({"ReinsNumber": reins_numbers_1}).ReinsNumber &
+        (ri_scope_df.RiskLevel == risk_level)].ReinsNumber
+    print(reins_numbers_2.head())
+    if len(reins_numbers_2) == 0:
+        return None
+
+    ri_info_inuring_priority_df = ri_info_df[ri_info_df.isin({"ReinsNumber": reins_numbers_2}).ReinsNumber]
+
+    reinsurance_layer = ReinsuranceLayer(
+        name="ri{}".format(inuring_priority),
+        ri_info=ri_info_inuring_priority_df,
+        ri_scope=ri_scope_df,
+        accounts=account_df,
+        locations=location_df,
+        items=items,
+        coverages=coverages,
+        fm_xrefs=fm_xrefs,
+        xref_descriptions=xref_descriptions,
+        risk_level=risk_level
+    )
+
+    reinsurance_layer.generate_oasis_structures()
+    reinsurance_layer.write_oasis_files() is not None
+    if inuring_priority == 1:
+        reinsurance_layer_losses_df = reinsurance_layer.apply_fm(
+            "ils")
+    else:
+        reinsurance_layer_losses_df = reinsurance_layer.apply_fm(
+            "ri{}".format(inuring_priority - 1))
+
+    return reinsurance_layer_losses_df
 
 def run_test(
         run_name,
@@ -97,32 +143,22 @@ def run_test(
         losses_df = direct_layer.apply_fm(
             loss_percentage_of_tiv=loss_factor, net=False)
         net_losses.append(losses_df)
-
         if do_reinsurance:
             for inuring_priority in range(1, ri_info_df['InuringPriority'].max() + 1):
-                reinsurance_layer = ReinsuranceLayer(
-                    name="ri{}".format(inuring_priority),
-                    ri_info=ri_info_df.loc[ri_info_df['InuringPriority']
-                                           == inuring_priority],
-                    ri_scope=ri_scope_df,
-                    accounts=account_df,
-                    locations=location_df,
-                    items=direct_layer.items,
-                    coverages=direct_layer.coverages,
-                    fm_xrefs=direct_layer.fm_xrefs,
-                    xref_descriptions=direct_layer.xref_descriptions
-                )
-
-                reinsurance_layer.generate_oasis_structures()
-                reinsurance_layer.write_oasis_files() is not None
-                if inuring_priority == 1:
-                    reinsurance_layer_losses_df = reinsurance_layer.apply_fm(
-                        "ils")
-                else:
-                    reinsurance_layer_losses_df = reinsurance_layer.apply_fm(
-                        "ri{}".format(inuring_priority - 1))
-
-                net_losses.append(reinsurance_layer_losses_df)
+                for risk_level in common.REINS_RISK_LEVELS:
+                    if ri_scope_df[ri_scope_df.RiskLevel==risk_level].shape[0] == 0:
+                        pass             
+                    reinsurance_layer_losses_df = run_inuring_level_risk_level(
+                        inuring_priority,
+                        direct_layer.items,
+                        direct_layer.coverages,
+                        direct_layer.fm_xrefs,
+                        direct_layer.xref_descriptions,
+                        ri_info_df,
+                        ri_scope_df,
+                        risk_level)
+                    
+                    net_losses.append(reinsurance_layer_losses_df)
 
     finally:
         os.chdir(cwd)

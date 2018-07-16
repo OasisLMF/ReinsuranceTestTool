@@ -278,7 +278,7 @@ class ReinsuranceLayer(object):
             x.profile_id for x in add_profiles_args.fmprofiles_list)
 
         # Add pass through nodes at all levels so that the risks
-        # not covered by the Fac are unaffected
+        # not explicitly covered are unaffected
         for node in anytree.iterators.LevelOrderIter(add_profiles_args.program_node):
             add_profiles_args.node_layer_profile_map[(
                 node.name, add_profiles_args.layer_id)] = add_profiles_args.nolossprofile_id
@@ -317,6 +317,99 @@ class ReinsuranceLayer(object):
             else:
                 raise Exception(
                     "Unsupported risk level: {}".format(ri_scope_row.RiskLevel))
+
+    def _add_per_risk_profiles(self, add_profiles_args):
+        profile_id = max(
+            x.profile_id for x in add_profiles_args.fmprofiles_list)
+
+        # Add pass through nodes at all levels so that the risks
+        # not explcitly covered are unaffected
+        for node in anytree.iterators.LevelOrderIter(add_profiles_args.program_node):
+            add_profiles_args.node_layer_profile_map[(
+                node.name, add_profiles_args.layer_id)] = add_profiles_args.nolossprofile_id
+        add_profiles_args.node_layer_profile_map[(
+            add_profiles_args.program_node.name, add_profiles_args.layer_id)] = add_profiles_args.passthroughprofile_id
+
+        for _, ri_scope_row in add_profiles_args.scope_rows.iterrows():
+
+            profile_id = profile_id + 1
+            add_profiles_args.fmprofiles_list.append(common.get_profile(
+                profile_id,
+                attachment=add_profiles_args.ri_info_row.RiskAttachmentPoint,
+                limit=add_profiles_args.ri_info_row.RiskLimit,
+                share=ri_scope_row.CededPercent
+            ))
+
+            if ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_LOCATION:
+                nodes = anytree.search.findall(
+                    add_profiles_args.program_node,
+                    filter_=lambda node: self._does_location_node_match_scope_row(node, ri_scope_row))
+                for node in nodes:
+                    add_profiles_args.node_layer_profile_map[(
+                        node.name, add_profiles_args.layer_id)] = profile_id
+            elif ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_POLICY:
+                nodes = anytree.search.findall(
+                    add_profiles_args.program_node,
+                    filter_=lambda node: self._does_policy_node_match_scope_row(node, ri_scope_row))
+                for node in nodes:
+                    add_profiles_args.node_layer_profile_map[(
+                        node.name, add_profiles_args.layer_id)] = profile_id
+            elif ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_ACCOUNT:
+                nodes = anytree.search.findall(
+                    add_profiles_args.program_node,
+                    filter_=lambda node: self._does_account_node_match_scope_row(node, ri_scope_row))
+                for node in nodes:
+                    add_profiles_args.node_layer_profile_map[(
+                        node.name, add_profiles_args.layer_id)] = profile_id
+            else:
+                raise Exception(
+                    "Unsupported risk level: {}".format(ri_scope_row.RiskLevel))
+
+    def _add_surplus_share_profiles(self, add_profiles_args):
+        profile_id = max(
+            x.profile_id for x in add_profiles_args.fmprofiles_list)
+
+        # Add pass through nodes at all levels so that the risks
+        # not explicitly covered are unaffected
+        for node in anytree.iterators.LevelOrderIter(add_profiles_args.program_node):
+            add_profiles_args.node_layer_profile_map[(
+                node.name, add_profiles_args.layer_id)] = add_profiles_args.nolossprofile_id
+        add_profiles_args.node_layer_profile_map[(
+            add_profiles_args.program_node.name, add_profiles_args.layer_id)] = add_profiles_args.passthroughprofile_id
+
+        for _, ri_scope_row in add_profiles_args.scope_rows.iterrows():
+            profile_id = profile_id + 1
+            add_profiles_args.fmprofiles_list.append(common.get_profile(
+                profile_id,
+                attachment=add_profiles_args.ri_info_row.RiskAttachmentPoint,
+                limit=add_profiles_args.ri_info_row.RiskLimit,
+                share=ri_scope_row.CededPercent
+            ))
+            if ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_LOCATION:
+                nodes = anytree.search.findall(
+                    add_profiles_args.program_node,
+                    filter_=lambda node: self._does_location_node_match_scope_row(node, ri_scope_row))
+                for node in nodes:
+                    add_profiles_args.node_layer_profile_map[(
+                        node.name, add_profiles_args.layer_id)] = profile_id
+            elif ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_POLICY:
+                nodes = anytree.search.findall(
+                    add_profiles_args.program_node,
+                    filter_=lambda node: self._does_policy_node_match_scope_row(node, ri_scope_row))
+                for node in nodes:
+                    add_profiles_args.node_layer_profile_map[(
+                        node.name, add_profiles_args.layer_id)] = profile_id
+            elif ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_ACCOUNT:
+                nodes = anytree.search.findall(
+                    add_profiles_args.program_node,
+                    filter_=lambda node: self._does_account_node_match_scope_row(node, ri_scope_row))
+                for node in nodes:
+                    add_profiles_args.node_layer_profile_map[(
+                        node.name, add_profiles_args.layer_id)] = profile_id
+            else:
+                raise Exception(
+                    "Unsupported risk level: {}".format(ri_scope_row.RiskLevel))
+
 
     def _add_quota_share_profiles(self, add_profiles_args):
         profile_id = max(
@@ -413,8 +506,12 @@ class ReinsuranceLayer(object):
 
             if ri_info_row.ReinsType == common.REINS_TYPE_FAC:
                 self._add_fac_profiles(add_profiles_args)
+            elif ri_info_row.ReinsType == common.REINS_TYPE_PER_RISK:
+                self._add_per_risk_profiles(add_profiles_args)
             elif ri_info_row.ReinsType == common.REINS_TYPE_QUOTA_SHARE:
                 self._add_quota_share_profiles(add_profiles_args)
+            elif ri_info_row.ReinsType == common.REINS_TYPE_SURPLUS_SHARE:
+                self._add_surplus_share_profiles(add_profiles_args)                
             elif ri_info_row.ReinsType == common.REINS_TYPE_CAT_XL:
                 self._add_cat_xl_profiles(add_profiles_args)
             else:

@@ -2,15 +2,15 @@
 Test tool for reinsurance functaionality and OED data input.
 Takes input data in OED format, and invokes the Oasis Platform financial module.
 """
-import subprocess
 from tabulate import tabulate
 import pandas as pd
 import shutil
 import os
 import argparse
-from reinsurance_layer import *
-from direct_layer import *
-from common import *
+from reinsurance_layer import ReinsuranceLayer, validate_reinsurance_structures
+from direct_layer import DirectLayer
+import common
+from collections import OrderedDict
 
 
 def load_oed_dfs(oed_dir, show_all=False):
@@ -54,38 +54,42 @@ def load_oed_dfs(oed_dir, show_all=False):
             print("Both reinsurance files must exist: {} {}".format(
                 oed_ri_info_file, oed_ri_scope_file))
         if not show_all:
-            account_df = account_df[OED_ACCOUNT_FIELDS].copy()
-            location_df = location_df[OED_LOCATION_FIELDS].copy()
+            account_df = account_df[common.OED_ACCOUNT_FIELDS].copy()
+            location_df = location_df[common.OED_LOCATION_FIELDS].copy()
             if do_reinsuarnce:
-                ri_info_df = ri_info_df[OED_REINS_INFO_FIELDS].copy()
-                ri_scope_df = ri_scope_df[OED_REINS_SCOPE_FIELDS].copy()
+                ri_info_df = ri_info_df[common.OED_REINS_INFO_FIELDS].copy()
+                ri_scope_df = ri_scope_df[common.OED_REINS_SCOPE_FIELDS].copy()
     return (account_df, location_df, ri_info_df, ri_scope_df, do_reinsuarnce)
 
+
 def run_inuring_level_risk_level(
-    inuring_priority,
-    items,
-    coverages,
-    fm_xrefs,
-    xref_descriptions,
-    ri_info_df,
-    ri_scope_df,
-    previous_risk_level,
-    risk_level):
+        inuring_priority,
+        account_df,
+        location_df,
+        items,
+        coverages,
+        fm_xrefs,
+        xref_descriptions,
+        ri_info_df,
+        ri_scope_df,
+        previous_risk_level,
+        risk_level):
 
     reins_numbers_1 = ri_info_df[
-            ri_info_df['InuringPriority'] == inuring_priority].ReinsNumber
-    if len(reins_numbers_1) == 0:
+        ri_info_df['InuringPriority'] == inuring_priority].ReinsNumber
+    if reins_numbers_1.empty:
         return None
     reins_numbers_2 = ri_scope_df[
         ri_scope_df.isin({"ReinsNumber": reins_numbers_1}).ReinsNumber &
         (ri_scope_df.RiskLevel == risk_level)].ReinsNumber
-    if len(reins_numbers_2) == 0:
+    if reins_numbers_2.empty:
         return None
 
-    ri_info_inuring_priority_df = ri_info_df[ri_info_df.isin({"ReinsNumber": reins_numbers_2}).ReinsNumber]
-
+    ri_info_inuring_priority_df = ri_info_df[ri_info_df.isin(
+        {"ReinsNumber": reins_numbers_2}).ReinsNumber]
+    output_name = "ri_{}_{}".format(inuring_priority, risk_level)
     reinsurance_layer = ReinsuranceLayer(
-        name="ri_{}_{}".format(inuring_priority, risk_level),
+        name=output_name,
         ri_info=ri_info_inuring_priority_df,
         ri_scope=ri_scope_df,
         accounts=account_df,
@@ -98,15 +102,19 @@ def run_inuring_level_risk_level(
     )
 
     reinsurance_layer.generate_oasis_structures()
-    reinsurance_layer.write_oasis_files() is not None
+    reinsurance_layer.write_oasis_files()
+
+    input_name = ""
     if inuring_priority == 1 and previous_risk_level is None:
-        reinsurance_layer_losses_df = reinsurance_layer.apply_fm(
-            "ils")
+        input_name = "ils"
     else:
-        reinsurance_layer_losses_df = reinsurance_layer.apply_fm(
-            "ri_{}_{}".format(inuring_priority, previous_risk_level))
+        input_name = "ri_{}_{}".format(inuring_priority, previous_risk_level)
+
+    reinsurance_layer_losses_df = common.run_fm(
+        input_name, output_name, reinsurance_layer.xref_descriptions)
 
     return reinsurance_layer_losses_df
+
 
 def run_test(
         run_name,
@@ -123,15 +131,13 @@ def run_test(
         shutil.rmtree(run_name)
     os.mkdir(run_name)
 
-    net_losses = []
-
     cwd = os.getcwd()
 
     if os.path.exists(run_name):
         shutil.rmtree(run_name)
     os.mkdir(run_name)
 
-    net_losses = []
+    net_losses = OrderedDict()
 
     cwd = os.getcwd()
     try:
@@ -142,15 +148,28 @@ def run_test(
         direct_layer.write_oasis_files()
         losses_df = direct_layer.apply_fm(
             loss_percentage_of_tiv=loss_factor, net=False)
-        net_losses.append(losses_df)
+        net_losses['Direct'] = losses_df
         if do_reinsurance:
+            (is_valid, reisurance_layers) = validate_reinsurance_structures(
+                ri_info_df, ri_scope_df)
+            if not is_valid:
+                print("Reinsuarnce structure not valid")
+                for reinsurance_layer in reisurance_layers:
+                    if not reinsurance_layer.is_valid:
+                        print("Inuring layer {} invalid:".format(
+                            reinsurance_layer.inuring_priority))
+                        for validation_message in reinsurance_layer.validation_messages:
+                            print("\t{}".format(validation_message))
+
             for inuring_priority in range(1, ri_info_df['InuringPriority'].max() + 1):
                 previous_risk_level = None
                 for risk_level in common.REINS_RISK_LEVELS:
-                    if ri_scope_df[ri_scope_df.RiskLevel==risk_level].shape[0] == 0:
-                        pass             
+                    if ri_scope_df[ri_scope_df.RiskLevel == risk_level].shape[0] == 0:
+                        continue
                     reinsurance_layer_losses_df = run_inuring_level_risk_level(
                         inuring_priority,
+                        account_df,
+                        location_df,
                         direct_layer.items,
                         direct_layer.coverages,
                         direct_layer.fm_xrefs,
@@ -160,8 +179,9 @@ def run_test(
                         previous_risk_level,
                         risk_level)
                     previous_risk_level = risk_level
-                    
-                    net_losses.append(reinsurance_layer_losses_df)
+                    if reinsurance_layer_losses_df is not None:
+                        net_losses['Inuring priority:{} - Risk level:{}'.format(
+                            inuring_priority, risk_level)] = reinsurance_layer_losses_df
 
     finally:
         os.chdir(cwd)
@@ -199,7 +219,8 @@ if __name__ == "__main__":
         loss_factor,
         do_reinsurance)
 
-    for net_loss in net_losses:
+    for (description, net_loss) in net_losses.items():
+        print(description)
         print(tabulate(net_loss, headers='keys', tablefmt='psql', floatfmt=".2f"))
         print("")
         print("")

@@ -4,13 +4,15 @@ import subprocess
 import shutil
 import common
 
+
 class DirectLayer(object):
     """
     Set of direct policiies.
     Generates ktools inputs and runs financial module.
-    
+
     Does not handle multiple policies on same set of risks i.e. multiple layers.
     """
+
     def __init__(self, accounts, locations):
         self.accounts = accounts
         self.locations = locations
@@ -56,7 +58,7 @@ class DirectLayer(object):
             profile_id = profile_id + 1
             fmprofiles_list.append(
                 common.get_profile(
-                    profile_id, 
+                    profile_id,
                     deductible=policy.Ded6,
                     limit=policy.Limit6))
             fm_policytcs_list.append(common.FmPolicyTc(
@@ -139,7 +141,7 @@ class DirectLayer(object):
                                     policy_number=policy.PolicyNumber,
                                     tiv=tiv
                                 )
-                                )
+                            )
 
         self.coverages = pd.DataFrame(coverages_list)
         self.items = pd.DataFrame(items_list)
@@ -192,7 +194,7 @@ class DirectLayer(object):
         net_flag = ""
         if net:
             net_flag = "-n"
-        command = "../ktools/gultobin -S 1 < guls.csv | ../ktools/fmcalc -p direct {} -a {} | tee ils.bin | ../ktools/fmtocsv > ils.csv".format( 
+        command = "../ktools/gultobin -S 1 < guls.csv | ../ktools/fmcalc -p direct {} -a {} | tee ils.bin | ../ktools/fmtocsv > ils.csv".format(
             net_flag, common.ALLOCATE_TO_ITEMS_BY_PREVIOUS_LEVEL_ALLOC_ID)
         proc = subprocess.Popen(command, shell=True)
         proc.wait()

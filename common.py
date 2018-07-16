@@ -1,3 +1,5 @@
+import pandas as pd
+import subprocess
 from collections import namedtuple
 
 
@@ -15,7 +17,6 @@ DEDUCTIBLE_WITH_LIMIT_AS_A_PROPORTION_OF_LOSS_CALCRUKE_ID = 9
 LIMIT_ONLY_CALCRULE_ID = 14
 LIMIT_AS_A_PROPORTION_OF_LOSS_CALCRULE_ID = 15
 DEDUCTIBLE_AS_A_PROPORTION_OF_LOSS_CALCRULE_ID = 16
-
 
 CALCRULE_ID_DEDUCTIBLE_AND_LIMIT = 1
 CALCRULE_ID_DEDUCTIBLE_ATTACHMENT_LIMIT_AND_SHARE = 2
@@ -238,4 +239,36 @@ def get_profile(
         share3=0        # Not used
         )
 
+def run_fm(
+    input_name,
+    output_name,
+    xref_descriptions,
+    allocation=ALLOCATE_TO_ITEMS_BY_PREVIOUS_LEVEL_ALLOC_ID):
+    command = \
+        "../ktools/fmcalc -p {0} -n -a {2} < {1}.bin | tee {0}.bin | ../ktools/fmtocsv > {0}.csv".format(
+            output_name, input_name, allocation)
+    proc = subprocess.Popen(command, shell=True)
+    proc.wait()
+    if proc.returncode != 0:
+        raise Exception("Failed to run fm")
+    losses_df = pd.read_csv("{}.csv".format(output_name))
+    inputs_df = pd.read_csv("{}.csv".format(input_name))
 
+    losses_df.drop(losses_df[losses_df.sidx != 1].index, inplace=True)
+    inputs_df.drop(inputs_df[inputs_df.sidx != 1].index, inplace=True)
+    losses_df = pd.merge(
+        inputs_df,
+        losses_df, left_on='output_id', right_on='output_id',
+        suffixes=('_pre', '_net'))
+
+    losses_df = pd.merge(
+        xref_descriptions,
+        losses_df, left_on='xref_id', right_on='output_id')
+
+    del losses_df['event_id_pre']
+    del losses_df['sidx_pre']
+    del losses_df['event_id_net']
+    del losses_df['sidx_net']
+    del losses_df['output_id']
+    del losses_df['xref_id']
+    return losses_df

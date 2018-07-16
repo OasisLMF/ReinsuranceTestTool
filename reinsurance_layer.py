@@ -7,17 +7,121 @@ import common
 from collections import namedtuple
 
 
+# Meta-data about an inuring layer
+InuringLayer = namedtuple(
+    "InuringLayer",
+    "inuring_priority reins_numbers is_valid validation_messages")
+
+def any_fac(reins_info_df):
+    '''
+    Is there any fac?
+    '''
+    return not reins_info_df[reins_info_df.ReinsType == common.REINS_TYPE_FAC].empty
+
+def any_quota_share(reins_info_df):
+    '''
+    Is there any quota share?
+    '''
+    return not reins_info_df[reins_info_df.ReinsType == common.REINS_TYPE_QUOTA_SHARE].empty
+
+
+def any_surplus_share(reins_info_df):
+    '''
+    Is there any surplus share?
+    '''
+    return not reins_info_df[reins_info_df.ReinsType == common.REINS_TYPE_SURPLUS_SHARE].empty
+
+
+def any_per_risk(reins_info_df):
+    '''
+    Is there any per-risk?
+    '''
+    return not reins_info_df[reins_info_df.ReinsType == common.REINS_TYPE_PER_RISK].empty
+
+
+def any_cat_xl(reins_info_df):
+    '''
+    Are there any Cat XL?
+    '''
+    return not reins_info_df[reins_info_df.ReinsType == common.REINS_TYPE_CAT_XL].empty
+
+
+def any_agg_xl(reins_info_df):
+    '''
+    Are there any AGG XL?
+    '''
+    return not reins_info_df[reins_info_df.ReinsType == common.REINS_TYPE_AGG_XL].empty
+
+
 def validate_reinsurance_structures(ri_info_df, ri_scope_df):
-    pass
+    '''
+    Validate OED resinurance structure before running calculations.
+    '''
+    main_is_valid = True
+    inuring_layers = {}
+    for inuring_priority in range(1, ri_info_df['InuringPriority'].max() + 1):
+
+        inuring_priority_ri_info_df = ri_info_df[ri_info_df.InuringPriority == inuring_priority]
+        if inuring_priority_ri_info_df.empty:
+            continue
+
+        is_valid = True
+        validation_messages = []
+        has_fac = any_fac(inuring_priority_ri_info_df)
+        has_quota_share = any_quota_share(inuring_priority_ri_info_df)
+        has_surplus_share = any_surplus_share(inuring_priority_ri_info_df)
+        has_per_risk = any_per_risk(inuring_priority_ri_info_df)
+        has_cat_xl = any_cat_xl(inuring_priority_ri_info_df)
+        has_agg_xl = any_agg_xl(inuring_priority_ri_info_df)
+
+        if has_surplus_share:
+            is_valid = False
+            validation_messages.append("Surplus share not implemented")
+        if has_agg_xl:
+            is_valid = False
+            validation_messages.append("Aggreation XL not implemented")
+            continue
+        if has_fac and (has_quota_share or has_surplus_share or has_per_risk or has_cat_xl or has_agg_xl):
+            is_valid = False
+            validation_messages.append(
+                "Fac cannot be combined with other reinsurance types")
+            continue
+        if has_per_risk and (has_fac or has_quota_share or has_surplus_share or has_cat_xl or has_agg_xl):
+            is_valid = False
+            validation_messages.append(
+                "Fac cannot be combined with other reinsurance types")
+            continue
+        if has_cat_xl and (has_fac or has_quota_share or has_surplus_share or has_per_risk or has_agg_xl):
+            is_valid = False
+            validation_messages.append(
+                "Cat XL cannot be combined with other reinsurance types")
+            continue
+        if has_agg_xl and (has_fac or has_quota_share or has_surplus_share or has_per_risk or has_cat_xl):
+            is_valid = False
+            validation_messages.append(
+                "AGG XL cannot be combined with other reinsurance types")
+            continue
+
+        if not is_valid:
+            main_is_valid = False
+
+        inuring_layers[inuring_priority] = InuringLayer(
+            inuring_priority=inuring_priority,
+            reins_numbers=inuring_priority_ri_info_df.ReinsNumber,
+            is_valid=is_valid,
+            validation_messages=validation_messages
+        )
+
+    return (main_is_valid, inuring_layers)
+
 
 class ReinsuranceLayer(object):
     """
-    Generates ktools inputs and runs financial module for a
-    set of reinsurance layers.
+    Generates ktools inputs and runs financial module for a reinsurance structure.
     """
 
-    def __init__(self, name, ri_info, ri_scope, accounts, locations, 
-                items, coverages, fm_xrefs, xref_descriptions, risk_level):
+    def __init__(self, name, ri_info, ri_scope, accounts, locations,
+                 items, coverages, fm_xrefs, xref_descriptions, risk_level):
 
         self.name = name
         self.accounts = accounts
@@ -40,8 +144,8 @@ class ReinsuranceLayer(object):
         self.ri_scope = ri_scope
 
         self.add_profiles_args = namedtuple(
-            "AddProfilesArgs", 
-            "program_node, ri_info_row, scope_rows, layer_id, " \
+            "AddProfilesArgs",
+            "program_node, ri_info_row, scope_rows, layer_id, "
             "node_layer_profile_map, fmprofiles_list, nolossprofile_id, passthroughprofile_id")
 
     def _add_program_node(self, level_id):
@@ -65,11 +169,11 @@ class ReinsuranceLayer(object):
             location_number=common.NOT_SET_ID)
 
     def _add_location_node(
-        self, level_id, agg_id, xref_description, parent):
+            self, level_id, agg_id, xref_description, parent):
         return anytree.Node(
             "Account_number:{} Policy_number:{} Location_number:{}".format(
-                xref_description.account_number, 
-                xref_description.policy_number, 
+                xref_description.account_number,
+                xref_description.policy_number,
                 xref_description.location_number),
             parent=parent,
             level_id=level_id,
@@ -79,7 +183,7 @@ class ReinsuranceLayer(object):
             location_number=xref_description.location_number)
 
     def _add_policy_node(
-        self, level_id, agg_id, xref_description, parent):
+            self, level_id, agg_id, xref_description, parent):
         return anytree.Node(
             "Account_number:{} Policy_number:{}".format(
                 xref_description.account_number, xref_description.policy_number),
@@ -91,7 +195,7 @@ class ReinsuranceLayer(object):
             location_number=common.NOT_SET_ID)
 
     def _add_account_node(
-        self, agg_id, level_id, xref_description, parent):
+            self, agg_id, level_id, xref_description, parent):
         return anytree.Node(
             "Account_number:{}".format(xref_description.account_number),
             parent=parent,
@@ -102,18 +206,24 @@ class ReinsuranceLayer(object):
             location_number=common.NOT_SET_ID)
 
     def _does_location_node_match_scope_row(self, node, ri_scope_row):
-        node_summary = (node.account_number, node.policy_number, node.location_number)
-        scope_row_summary = (ri_scope_row.AccountNumber, ri_scope_row.PolicyNumber, ri_scope_row.LocationNumber)
+        node_summary = (node.account_number,
+                        node.policy_number, node.location_number)
+        scope_row_summary = (ri_scope_row.AccountNumber,
+                             ri_scope_row.PolicyNumber, ri_scope_row.LocationNumber)
         return (node_summary == scope_row_summary)
 
     def _does_policy_node_match_scope_row(self, node, ri_scope_row):
-        node_summary = (node.account_number, node.policy_number, common.NOT_SET_ID)
-        scope_row_summary = (ri_scope_row.AccountNumber, ri_scope_row.PolicyNumber, common.NOT_SET_ID)
+        node_summary = (node.account_number,
+                        node.policy_number, common.NOT_SET_ID)
+        scope_row_summary = (ri_scope_row.AccountNumber,
+                             ri_scope_row.PolicyNumber, common.NOT_SET_ID)
         return (node_summary == scope_row_summary)
 
     def _does_account_node_match_scope_row(self, node, ri_scope_row):
-        node_summary = (node.account_number, common.NOT_SET_ID, common.NOT_SET_ID)
-        scope_row_summary = (ri_scope_row.AccountNumber, common.NOT_SET_ID, common.NOT_SET_ID)
+        node_summary = (node.account_number,
+                        common.NOT_SET_ID, common.NOT_SET_ID)
+        scope_row_summary = (ri_scope_row.AccountNumber,
+                             common.NOT_SET_ID, common.NOT_SET_ID)
         return (node_summary == scope_row_summary)
 
     def _get_tree(self):
@@ -149,7 +259,8 @@ class ReinsuranceLayer(object):
                     agg_id = agg_id + 1
                     level_id = 2
                     current_policy_number = row.policy_number
-                    current_policy_node = self._add_location_node(level_id, agg_id, row, program_node)
+                    current_policy_node = self._add_location_node(
+                        level_id, agg_id, row, program_node)
                 self._add_item_node(row.xref_id, current_policy_node)
         elif self.risk_level == common.REINS_RISK_LEVEL_LOCATION:
             for _, row in xref_descriptions.iterrows():
@@ -157,46 +268,48 @@ class ReinsuranceLayer(object):
                     agg_id = agg_id + 1
                     level_id = 2
                     current_location_number = row.location_number
-                    current_location_node = self._add_location_node(level_id, agg_id, row, program_node)
+                    current_location_node = self._add_location_node(
+                        level_id, agg_id, row, program_node)
                 self._add_item_node(row.xref_id, current_location_node)
         return program_node
 
     def _add_fac_profiles(self, add_profiles_args):
-        profile_id = max(x.profile_id for x in add_profiles_args.fmprofiles_list)
+        profile_id = max(
+            x.profile_id for x in add_profiles_args.fmprofiles_list)
 
-        #
         # Add pass through nodes at all levels so that the risks
-        # not covered by the FAC are unaffected 
-        #
+        # not covered by the Fac are unaffected
         for node in anytree.iterators.LevelOrderIter(add_profiles_args.program_node):
-            add_profiles_args.node_layer_profile_map[(node.name, add_profiles_args.layer_id)] = add_profiles_args.nolossprofile_id
-        add_profiles_args.node_layer_profile_map[(add_profiles_args.program_node.name, add_profiles_args.layer_id)] = add_profiles_args.passthroughprofile_id
+            add_profiles_args.node_layer_profile_map[(
+                node.name, add_profiles_args.layer_id)] = add_profiles_args.nolossprofile_id
+        add_profiles_args.node_layer_profile_map[(
+            add_profiles_args.program_node.name, add_profiles_args.layer_id)] = add_profiles_args.passthroughprofile_id
 
         profile_id = profile_id + 1
         add_profiles_args.fmprofiles_list.append(common.get_profile(
             profile_id,
             attachment=add_profiles_args.ri_info_row.RiskAttachmentPoint,
             limit=add_profiles_args.ri_info_row.RiskLimit
-            ))
-        
+        ))
+
         for _, ri_scope_row in add_profiles_args.scope_rows.iterrows():
             if ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_LOCATION:
                 nodes = anytree.search.findall(
-                    add_profiles_args.program_node, 
-                    filter_= lambda node: self._does_location_node_match_scope_row(node, ri_scope_row))                            
+                    add_profiles_args.program_node,
+                    filter_=lambda node: self._does_location_node_match_scope_row(node, ri_scope_row))
                 for node in nodes:
                     add_profiles_args.node_layer_profile_map[(
                         node.name, add_profiles_args.layer_id)] = profile_id
             elif ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_POLICY:
                 nodes = anytree.search.findall(
-                    add_profiles_args.program_node, 
+                    add_profiles_args.program_node,
                     filter_=lambda node: self._does_policy_node_match_scope_row(node, ri_scope_row))
                 for node in nodes:
                     add_profiles_args.node_layer_profile_map[(
                         node.name, add_profiles_args.layer_id)] = profile_id
             elif ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_ACCOUNT:
                 nodes = anytree.search.findall(
-                    add_profiles_args.program_node, 
+                    add_profiles_args.program_node,
                     filter_=lambda node: self._does_account_node_match_scope_row(node, ri_scope_row))
                 for node in nodes:
                     add_profiles_args.node_layer_profile_map[(
@@ -206,7 +319,8 @@ class ReinsuranceLayer(object):
                     "Unsupported risk level: {}".format(ri_scope_row.RiskLevel))
 
     def _add_quota_share_profiles(self, add_profiles_args):
-        profile_id = max(x.profile_id for x in add_profiles_args.fmprofiles_list)
+        profile_id = max(
+            x.profile_id for x in add_profiles_args.fmprofiles_list)
 
         # Add any risk limits
         if self.risk_level == common.REINS_RISK_LEVEL_PORTFOLIO:
@@ -217,11 +331,12 @@ class ReinsuranceLayer(object):
                 common.get_profile(
                     profile_id,
                     limit=add_profiles_args.ri_info_row.RiskLimit
-            ))
+                ))
             nodes = anytree.search.findall(
                 add_profiles_args.program_node, filter_=lambda node: node.level_id == 2)
             for node in nodes:
-                add_profiles_args.node_layer_profile_map[(node.name, add_profiles_args.layer_id)] = profile_id
+                add_profiles_args.node_layer_profile_map[(
+                    node.name, add_profiles_args.layer_id)] = profile_id
 
         # Add occurrence limit and share
         profile_id = profile_id + 1
@@ -230,14 +345,13 @@ class ReinsuranceLayer(object):
                 profile_id,
                 limit=add_profiles_args.ri_info_row.OccLimit,
                 share=add_profiles_args.ri_info_row.CededPercent
-                ))
+            ))
         add_profiles_args.node_layer_profile_map[
             (add_profiles_args.program_node.name, add_profiles_args.layer_id)] = profile_id
 
-
     def _add_cat_xl_profiles(self, add_profiles_args):
-
-        profile_id = max(x.profile_id for x in add_profiles_args.fmprofiles_list)
+        profile_id = max(
+            x.profile_id for x in add_profiles_args.fmprofiles_list)
         profile_id = profile_id + 1
         add_profiles_args.fmprofiles_list.append(
             common.get_profile(
@@ -245,38 +359,43 @@ class ReinsuranceLayer(object):
                 attachment=add_profiles_args.ri_info_row.OccurenceAttachmentPoint,
                 limit=add_profiles_args.ri_info_row.OccLimit,
                 share=add_profiles_args.ri_info_row.CededPercent
-                ))
+            ))
         add_profiles_args.node_layer_profile_map[
             (add_profiles_args.program_node.name, add_profiles_args.layer_id)] = profile_id
 
-
     def generate_oasis_structures(self):
+        '''
+        Create the Oasis structures - FM Programmes, FM Profiles and FM Policy TCs -
+        that represent the resinsurance structure.
+
+        The algorithm to create the stucture has three steps:
+        Step 1 - Build a tree representation of the insurance program, depening on the reinsuarnce risk level.
+        Step 2 - Overlay the reinsurance structure. Each resinsuarnce contact is a seperate layer.
+        Step 3 - Iterate over the tree and write out the Oasis structure.
+        '''
 
         fmprogrammes_list = list()
         fmprofiles_list = list()
         fm_policytcs_list = list()
 
-        profile_id = 0
-
-        profile_id = profile_id + 1
+        profile_id = 1
         nolossprofile_id = profile_id
         fmprofiles_list.append(
             common.get_no_loss_profile(nolossprofile_id))
-            
         profile_id = profile_id + 1
         passthroughprofile_id = profile_id
         fmprofiles_list.append(
             common.get_pass_through_profile(passthroughprofile_id))
-            
+
         node_layer_profile_map = {}
 
         #
-        # Build the tree representation of the program
+        # Step 1 - Build a tree representation of the insurance program, depening on the reinsuarnce risk level.
         #
         program_node = self._get_tree()
 
         #
-        # Overlay the reinsurance structure
+        # Step 2 - Overlay the reinsurance structure. Each resinsuarnce contact is a seperate layer.
         #
         layer_id = 0
         for _, ri_info_row in self.ri_info.iterrows():
@@ -285,11 +404,11 @@ class ReinsuranceLayer(object):
             scope_rows = self.ri_scope[
                 (self.ri_scope.ReinsNumber == ri_info_row.ReinsNumber) &
                 (self.ri_scope.RiskLevel == self.risk_level)]
-            if scope_rows.shape[0] == 0: 
+            if scope_rows.shape[0] == 0:
                 continue
 
             add_profiles_args = self.add_profiles_args(
-                program_node, ri_info_row, scope_rows, layer_id, node_layer_profile_map, 
+                program_node, ri_info_row, scope_rows, layer_id, node_layer_profile_map,
                 fmprofiles_list, nolossprofile_id, passthroughprofile_id)
 
             if ri_info_row.ReinsType == common.REINS_TYPE_FAC:
@@ -303,7 +422,7 @@ class ReinsuranceLayer(object):
                     ri_info_row.ReinsType))
 
         #
-        # Generate the FmProgrammes and FmPolicyTcs
+        # Step 3 - Iterate over the tree and write out the Oasis structure.
         #
         for node in anytree.iterators.LevelOrderIter(program_node):
             if node.parent is not None:
@@ -320,9 +439,10 @@ class ReinsuranceLayer(object):
                 if node.level_id > 1:
                     fm_policytcs_list.append(common.FmPolicyTc(
                         layer_id=layer_id,
-                        level_id=node.level_id-1,
+                        level_id=node.level_id - 1,
                         agg_id=node.agg_id,
-                        profile_id=node_layer_profile_map[(node.name, layer_id)]
+                        profile_id=node_layer_profile_map[(
+                            node.name, layer_id)]
                     ))
 
         self.fmprogrammes = pd.DataFrame(fmprogrammes_list)
@@ -330,6 +450,9 @@ class ReinsuranceLayer(object):
         self.fm_policytcs = pd.DataFrame(fm_policytcs_list)
 
     def write_oasis_files(self):
+        """
+        Write out the Oasis structures to file.
+        """
 
         self.fmprogrammes.to_csv("fm_programme.csv", index=False)
         self.fmprofiles.to_csv("fm_profile.csv", index=False)
@@ -357,33 +480,3 @@ class ReinsuranceLayer(object):
             if proc.returncode != 0:
                 raise Exception(
                     "Failed to convert {}: {}".format(input_file_path, command))
-
-    def apply_fm(self, input_name):
-        command = \
-            "../ktools/fmcalc -p {0} -n -a {2} < {1}.bin | tee {0}.bin | ../ktools/fmtocsv > {0}.csv".format(
-                self.name, input_name, common.ALLOCATE_TO_ITEMS_BY_PREVIOUS_LEVEL_ALLOC_ID)
-        proc = subprocess.Popen(command, shell=True)
-        proc.wait()
-        if proc.returncode != 0:
-            raise Exception("Failed to run fm")
-        losses_df = pd.read_csv("{}.csv".format(self.name))
-        inputs_df = pd.read_csv("{}.csv".format(input_name))
-
-        losses_df.drop(losses_df[losses_df.sidx != 1].index, inplace=True)
-        inputs_df.drop(inputs_df[inputs_df.sidx != 1].index, inplace=True)
-        losses_df = pd.merge(
-            inputs_df,
-            losses_df, left_on='output_id', right_on='output_id',
-            suffixes=('_pre', '_net'))
-
-        losses_df = pd.merge(
-            self.xref_descriptions,
-            losses_df, left_on='xref_id', right_on='output_id')
-
-        del losses_df['event_id_pre']
-        del losses_df['sidx_pre']
-        del losses_df['event_id_net']
-        del losses_df['sidx_net']
-        del losses_df['output_id']
-        del losses_df['xref_id']
-        return losses_df

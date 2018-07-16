@@ -72,6 +72,7 @@ def run_inuring_level_risk_level(
         xref_descriptions,
         ri_info_df,
         ri_scope_df,
+        previous_inuring_priority,
         previous_risk_level,
         risk_level):
 
@@ -105,10 +106,10 @@ def run_inuring_level_risk_level(
     reinsurance_layer.write_oasis_files()
 
     input_name = ""
-    if inuring_priority == 1 and previous_risk_level is None:
+    if previous_inuring_priority is None and previous_risk_level is None:
         input_name = "ils"
     else:
-        input_name = "ri_{}_{}".format(inuring_priority, previous_risk_level)
+        input_name = "ri_{}_{}".format(previous_inuring_priority, previous_risk_level)
 
     reinsurance_layer_losses_df = common.run_fm(
         input_name, output_name, reinsurance_layer.xref_descriptions)
@@ -161,10 +162,11 @@ def run_test(
                         for validation_message in reinsurance_layer.validation_messages:
                             print("\t{}".format(validation_message))
 
+            previous_inuring_priority = None
+            previous_risk_level = None
             for inuring_priority in range(1, ri_info_df['InuringPriority'].max() + 1):
-                previous_risk_level = None
                 for risk_level in common.REINS_RISK_LEVELS:
-                    if ri_scope_df[ri_scope_df.RiskLevel == risk_level].shape[0] == 0:
+                    if ri_scope_df[ri_scope_df.RiskLevel == risk_level].empty:
                         continue
                     reinsurance_layer_losses_df = run_inuring_level_risk_level(
                         inuring_priority,
@@ -176,9 +178,12 @@ def run_test(
                         direct_layer.xref_descriptions,
                         ri_info_df,
                         ri_scope_df,
+                        previous_inuring_priority,
                         previous_risk_level,
                         risk_level)
+                    previous_inuring_priority = inuring_priority
                     previous_risk_level = risk_level
+
                     if reinsurance_layer_losses_df is not None:
                         net_losses['Inuring priority:{} - Risk level:{}'.format(
                             inuring_priority, risk_level)] = reinsurance_layer_losses_df

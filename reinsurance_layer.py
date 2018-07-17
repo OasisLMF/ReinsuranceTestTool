@@ -99,7 +99,6 @@ def validate_reinsurance_structures(ri_info_df, ri_scope_df):
                 "AGG XL cannot be combined with other reinsurance types")
             continue
 
-        # TODO: SS or per-risk with mixed risk levels.:wq
 
         if not is_valid:
             main_is_valid = False
@@ -285,7 +284,7 @@ class ReinsuranceLayer(object):
             add_profiles_args.program_node.name, add_profiles_args.layer_id)] = add_profiles_args.passthroughprofile_id
 
         profile_id = profile_id + 1
-        add_profiles_args.fmprofiles_list.append(common.get_profile(
+        add_profiles_args.fmprofiles_list.append(common.get_reinsurance_profile(
             profile_id,
             attachment=add_profiles_args.ri_info_row.RiskAttachmentPoint,
             limit=add_profiles_args.ri_info_row.RiskLimit
@@ -332,11 +331,11 @@ class ReinsuranceLayer(object):
         for _, ri_scope_row in add_profiles_args.scope_rows.iterrows():
 
             profile_id = profile_id + 1
-            add_profiles_args.fmprofiles_list.append(common.get_profile(
+            add_profiles_args.fmprofiles_list.append(common.get_reinsurance_profile(
                 profile_id,
                 attachment=add_profiles_args.ri_info_row.RiskAttachmentPoint,
                 limit=add_profiles_args.ri_info_row.RiskLimit,
-                share=ri_scope_row.CededPercent
+                ceded=ri_scope_row.CededPercent
             ))
 
             if ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_LOCATION:
@@ -378,7 +377,7 @@ class ReinsuranceLayer(object):
 
         for _, ri_scope_row in add_profiles_args.scope_rows.iterrows():
             profile_id = profile_id + 1
-            add_profiles_args.fmprofiles_list.append(common.get_profile(
+            add_profiles_args.fmprofiles_list.append(common.get_reinsurance_profile(
                 profile_id,
                 attachment=add_profiles_args.ri_info_row.RiskAttachmentPoint,
                 limit=add_profiles_args.ri_info_row.RiskLimit,
@@ -420,7 +419,7 @@ class ReinsuranceLayer(object):
         else:
             profile_id = profile_id + 1
             add_profiles_args.fmprofiles_list.append(
-                common.get_profile(
+                common.get_reinsurance_profile(
                     profile_id,
                     limit=add_profiles_args.ri_info_row.RiskLimit
                 ))
@@ -433,10 +432,10 @@ class ReinsuranceLayer(object):
         # Add occurrence limit and share
         profile_id = profile_id + 1
         add_profiles_args.fmprofiles_list.append(
-            common.get_profile(
+            common.get_reinsurance_profile(
                 profile_id,
                 limit=add_profiles_args.ri_info_row.OccLimit,
-                share=add_profiles_args.ri_info_row.CededPercent
+                ceded=add_profiles_args.ri_info_row.CededPercent
             ))
         add_profiles_args.node_layer_profile_map[
             (add_profiles_args.program_node.name, add_profiles_args.layer_id)] = profile_id
@@ -446,11 +445,11 @@ class ReinsuranceLayer(object):
             x.profile_id for x in add_profiles_args.fmprofiles_list)
         profile_id = profile_id + 1
         add_profiles_args.fmprofiles_list.append(
-            common.get_profile(
+            common.get_reinsurance_profile(
                 profile_id,
                 attachment=add_profiles_args.ri_info_row.OccurenceAttachmentPoint,
                 limit=add_profiles_args.ri_info_row.OccLimit,
-                share=add_profiles_args.ri_info_row.CededPercent
+                ceded=add_profiles_args.ri_info_row.CededPercent
             ))
         add_profiles_args.node_layer_profile_map[
             (add_profiles_args.program_node.name, add_profiles_args.layer_id)] = profile_id

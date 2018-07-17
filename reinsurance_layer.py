@@ -74,9 +74,6 @@ def validate_reinsurance_structures(ri_info_df, ri_scope_df):
         has_cat_xl = any_cat_xl(inuring_priority_ri_info_df)
         has_agg_xl = any_agg_xl(inuring_priority_ri_info_df)
 
-        if has_surplus_share:
-            is_valid = False
-            validation_messages.append("Surplus share not implemented")
         if has_agg_xl:
             is_valid = False
             validation_messages.append("Aggreation XL not implemented")
@@ -101,6 +98,8 @@ def validate_reinsurance_structures(ri_info_df, ri_scope_df):
             validation_messages.append(
                 "AGG XL cannot be combined with other reinsurance types")
             continue
+
+        # TODO: SS or per-risk with mixed risk levels.:wq
 
         if not is_valid:
             main_is_valid = False

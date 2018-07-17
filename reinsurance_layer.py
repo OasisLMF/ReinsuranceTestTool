@@ -99,6 +99,9 @@ def validate_reinsurance_structures(ri_info_df, ri_scope_df):
                 "AGG XL cannot be combined with other reinsurance types")
             continue
 
+	# Add a check for mix of risk levels in a single reinsurance scope
+	# Add a check for non-linking scopes
+
 
         if not is_valid:
             main_is_valid = False

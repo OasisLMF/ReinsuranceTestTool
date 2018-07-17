@@ -1,7 +1,7 @@
 <img src="https://oasislmf.org/packages/oasis_theme_package/themes/oasis_theme/assets/src/oasis-lmf-colour.png" alt="Oasis LMF logo" width="250"/>
 
 # ReinsuranceTestTool
-[![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/OasisLMF/ReinsuranceTestTool/master)
+[![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/OasisLMF/ReinsuranceTestTool/oed_qs)
 
 Test tool for new Oasis reinsurance functionality.
 A library of worked examples will be created that will be used to validate: 

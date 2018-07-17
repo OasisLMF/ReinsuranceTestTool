@@ -161,6 +161,7 @@ def run_test(
                             reinsurance_layer.inuring_priority))
                         for validation_message in reinsurance_layer.validation_messages:
                             print("\t{}".format(validation_message))
+                        exit(0)
 
             previous_inuring_priority = None
             previous_risk_level = None
@@ -215,8 +216,7 @@ if __name__ == "__main__":
     oed_dir = args.oed_dir
     loss_factor = args.loss_factor
 
-    (account_df, location_df, ri_info_df, ri_scope_df,
-     do_reinsurance) = load_oed_dfs(oed_dir)
+    (account_df, location_df, ri_info_df, ri_scope_df, do_reinsurance) = load_oed_dfs(oed_dir)
 
     net_losses = run_test(
         run_name,

@@ -384,7 +384,7 @@ class ReinsuranceLayer(object):
                 profile_id,
                 attachment=add_profiles_args.ri_info_row.RiskAttachmentPoint,
                 limit=add_profiles_args.ri_info_row.RiskLimit,
-                share=ri_scope_row.CededPercent
+                ceded=ri_scope_row.CededPercent
             ))
             if ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_LOCATION:
                 nodes = anytree.search.findall(

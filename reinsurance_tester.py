@@ -81,13 +81,13 @@ def run_inuring_level_risk_level(
     if reins_numbers_1.empty:
         return None
     reins_numbers_2 = ri_scope_df[
-        ri_scope_df.isin({"ReinsNumber": reins_numbers_1}).ReinsNumber &
+        ri_scope_df.isin({"ReinsNumber": reins_numbers_1.tolist()}).ReinsNumber &
         (ri_scope_df.RiskLevel == risk_level)].ReinsNumber
     if reins_numbers_2.empty:
         return None
 
     ri_info_inuring_priority_df = ri_info_df[ri_info_df.isin(
-        {"ReinsNumber": reins_numbers_2}).ReinsNumber]
+        {"ReinsNumber": reins_numbers_2.tolist()}).ReinsNumber]
     output_name = "ri_{}_{}".format(inuring_priority, risk_level)
     reinsurance_layer = ReinsuranceLayer(
         name=output_name,

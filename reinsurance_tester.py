@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 Test tool for reinsurance functaionality and OED data input.
 Takes input data in OED format, and invokes the Oasis Platform financial module.
@@ -7,6 +8,7 @@ import pandas as pd
 import shutil
 import os
 import argparse
+import time
 from reinsurance_layer import ReinsuranceLayer, validate_reinsurance_structures
 from direct_layer import DirectLayer
 import common
@@ -127,6 +129,8 @@ def run_test(
     Returns an array of net loss data frames, the first for the direct layers 
     and then one per inuring layer.
     """
+    t_start = time.time() 
+
 
     if os.path.exists(run_name):
         shutil.rmtree(run_name)
@@ -191,7 +195,8 @@ def run_test(
 
     finally:
         os.chdir(cwd)
-
+        t_end = time.time()
+        print("Exec time: {}".format(t_end - t_start))
     return net_losses
 
 

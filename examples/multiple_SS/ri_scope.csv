@@ -3,3 +3,7 @@ ReinsNumber,PortfolioNumber,AccountNumber,PolicyNumber,LocationGroup,LocationNum
 1,1,1,1,,2,,,,,,0.1,LOC
 1,1,2,2,,3,,,,,,0.1,LOC
 1,1,2,2,,4,,,,,,0.1,LOC
+2,1,1,1,,1,,,,,,0.2,LOC
+2,1,1,1,,2,,,,,,0.2,LOC
+2,1,2,2,,3,,,,,,0.2,LOC
+2,1,2,2,,4,,,,,,0.2,LOC

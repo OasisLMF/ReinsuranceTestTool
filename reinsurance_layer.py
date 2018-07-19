@@ -424,7 +424,8 @@ class ReinsuranceLayer(object):
             add_profiles_args.fmprofiles_list.append(
                 common.get_reinsurance_profile(
                     profile_id,
-                    limit=add_profiles_args.ri_info_row.RiskLimit
+                    limit=add_profiles_args.ri_info_row.RiskLimit,
+                    ceded=add_profiles_args.ri_info_row.CededPercent
                 ))
             nodes = anytree.search.findall(
                 add_profiles_args.program_node, filter_=lambda node: node.level_id == 2)
@@ -438,7 +439,6 @@ class ReinsuranceLayer(object):
             common.get_reinsurance_profile(
                 profile_id,
                 limit=add_profiles_args.ri_info_row.OccLimit,
-                ceded=add_profiles_args.ri_info_row.CededPercent
             ))
         add_profiles_args.node_layer_profile_map[
             (add_profiles_args.program_node.name, add_profiles_args.layer_id)] = profile_id
@@ -451,8 +451,7 @@ class ReinsuranceLayer(object):
             common.get_reinsurance_profile(
                 profile_id,
                 attachment=add_profiles_args.ri_info_row.OccurenceAttachmentPoint,
-                limit=add_profiles_args.ri_info_row.OccLimit,
-                ceded=add_profiles_args.ri_info_row.CededPercent
+                limit=add_profiles_args.ri_info_row.OccLimit
             ))
         add_profiles_args.node_layer_profile_map[
             (add_profiles_args.program_node.name, add_profiles_args.layer_id)] = profile_id

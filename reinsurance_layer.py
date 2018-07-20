@@ -60,8 +60,8 @@ def validate_reinsurance_structures(ri_info_df, ri_scope_df):
     main_is_valid = True
     inuring_layers = {}
     for inuring_priority in range(1, ri_info_df['InuringPriority'].max() + 1):
-
         inuring_priority_ri_info_df = ri_info_df[ri_info_df.InuringPriority == inuring_priority]
+        print(inuring_priority_ri_info_df)
         if inuring_priority_ri_info_df.empty:
             continue
 
@@ -73,6 +73,20 @@ def validate_reinsurance_structures(ri_info_df, ri_scope_df):
         has_per_risk = any_per_risk(inuring_priority_ri_info_df)
         has_cat_xl = any_cat_xl(inuring_priority_ri_info_df)
         has_agg_xl = any_agg_xl(inuring_priority_ri_info_df)
+
+        inuring_scope_ids = inuring_priority_ri_info_df.ReinsNumber.tolist()
+        inuring_scope_df = ri_scope_df[ri_scope_df.isin({"ReinsNumber": inuring_scope_ids}).ReinsNumber]
+        scope_risks = inuring_scope_df.RiskLevel.unique().tolist()
+
+        set_all_account   = inuring_scope_df.AccountNumber.notnull().all()
+        set_all_policy    = inuring_scope_df.PolicyNumber.notnull().all()
+        set_all_location  = inuring_scope_df.LocationNumber.notnull().all()
+        null_all_account  = inuring_scope_df.AccountNumber.isnull().all()
+        null_all_policy   = inuring_scope_df.PolicyNumber.isnull().all()
+        null_all_location = inuring_scope_df.LocationNumber.isnull().all()
+
+        all_scope_non-specific = (null_all_account and null_all_policy and null_all_location)
+        all_scope_specific = (set_all_account and set_all_policy and set_all_location)
 
         if has_agg_xl:
             is_valid = False
@@ -86,7 +100,7 @@ def validate_reinsurance_structures(ri_info_df, ri_scope_df):
         if has_per_risk and (has_fac or has_quota_share or has_surplus_share or has_cat_xl or has_agg_xl):
             is_valid = False
             validation_messages.append(
-                "Fac cannot be combined with other reinsurance types")
+                " per risk cannot be combined with other reinsurance types")
             continue
         if has_cat_xl and (has_fac or has_quota_share or has_surplus_share or has_per_risk or has_agg_xl):
             is_valid = False
@@ -98,10 +112,30 @@ def validate_reinsurance_structures(ri_info_df, ri_scope_df):
             validation_messages.append(
                 "AGG XL cannot be combined with other reinsurance types")
             continue
+        
+        if len(scope_risks) is not 1:
+            is_valid = False
+            validation_messages.append(
+                "Mix of risk levels in a single reinsurance scope")
+            continue
 
-	# Add a check for mix of risk levels in a single reinsurance scope
-	# Add a check for non-linking scopes
+        if not (set(scope_risks) < set(common.REINS_RISK_LEVELS)):
+            is_valid = False
+            validation_messages.append(
+                "Invalid risk level, {}".format(' '.join(scope_risks)))
+            continue
 
+        if has_surplus_share and not all_scope_specific:
+            is_valid = False
+            validation_messages.append(
+                "SS cannot have non-specific scopes")
+            continue
+        
+        if has_quota_share and not all_scope_non-specific:
+            is_valid = False
+            validation_messages.append(
+                "QS cannot have specific scopes set")
+            continue
 
         if not is_valid:
             main_is_valid = False
@@ -112,6 +146,13 @@ def validate_reinsurance_structures(ri_info_df, ri_scope_df):
             is_valid=is_valid,
             validation_messages=validation_messages
         )
+
+
+    
+
+
+
+
 
     return (main_is_valid, inuring_layers)
 

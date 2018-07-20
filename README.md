@@ -26,7 +26,10 @@ We recommend using a Python virtual environment for running the excercises. To s
 virtualenv venv
 source venv/bin/activate
 pip install -r requirements.txt
+jupyter nbextension install --py --sys-prefix fileupload
+jupyter nbextension enable --py --sys-prefix fileupload
 jupyter nbextension enable --py --sys-prefix qgrid
+
 
 pip install ipykernel
 ipython kernel install --user --name=ReinsuranceTestTool

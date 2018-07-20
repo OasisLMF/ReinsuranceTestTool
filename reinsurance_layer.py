@@ -52,8 +52,15 @@ def any_agg_xl(reins_info_df):
     '''
     return not reins_info_df[reins_info_df.ReinsType == common.REINS_TYPE_AGG_XL].empty
 
+def valid_links(df_src, column_name, df_dest):
+    '''
+    Check that all unique values in df_src[column_name] map to df_dest[column_name]
+    '''
+    src_values = df_src[column_name].unique().tolist()
+    return df_dest.isin({column_name: src_values}).all() 
 
-def validate_reinsurance_structures(ri_info_df, ri_scope_df):
+
+def validate_reinsurance_structures(account_df, location_df, ri_info_df, ri_scope_df):
     '''
     Validate OED resinurance structure before running calculations.
     '''
@@ -67,6 +74,7 @@ def validate_reinsurance_structures(ri_info_df, ri_scope_df):
 
         is_valid = True
         validation_messages = []
+
         has_fac = any_fac(inuring_priority_ri_info_df)
         has_quota_share = any_quota_share(inuring_priority_ri_info_df)
         has_surplus_share = any_surplus_share(inuring_priority_ri_info_df)
@@ -85,8 +93,16 @@ def validate_reinsurance_structures(ri_info_df, ri_scope_df):
         null_all_policy   = inuring_scope_df.PolicyNumber.isnull().all()
         null_all_location = inuring_scope_df.LocationNumber.isnull().all()
 
-        all_scope_non-specific = (null_all_account and null_all_policy and null_all_location)
+        all_scope_non_specific = (null_all_account and null_all_policy and null_all_location)
         all_scope_specific = (set_all_account and set_all_policy and set_all_location)
+
+        all_links_valid = (
+            valid_links(ri_scope_df, "AccountNumber",   account_df),
+            valid_links(ri_scope_df, "PolicyNumber",    account_df),
+            #valid_links(ri_scope_df, "PortfolioNumber", account_df),
+            valid_links(ri_scope_df, "AccountNumber",   location_df),
+            valid_links(ri_scope_df, "LocationNumber",  location_df),
+        )
 
         if has_agg_xl:
             is_valid = False
@@ -131,11 +147,18 @@ def validate_reinsurance_structures(ri_info_df, ri_scope_df):
                 "SS cannot have non-specific scopes")
             continue
         
-        if has_quota_share and not all_scope_non-specific:
+        if has_quota_share and not all_scope_non_specific:
             is_valid = False
             validation_messages.append(
                 "QS cannot have specific scopes set")
             continue
+
+        if not all_links_valid:
+            is_valid = False
+            validation_messages.append(
+                "Non-linking scopes between ri_scope and (ACC,LOC) files")
+            continue
+
 
         if not is_valid:
             main_is_valid = False
@@ -146,13 +169,6 @@ def validate_reinsurance_structures(ri_info_df, ri_scope_df):
             is_valid=is_valid,
             validation_messages=validation_messages
         )
-
-
-    
-
-
-
-
 
     return (main_is_valid, inuring_layers)
 

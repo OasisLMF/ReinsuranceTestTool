@@ -156,7 +156,7 @@ def run_test(
         net_losses['Direct'] = losses_df
         if do_reinsurance:
             (is_valid, reisurance_layers) = validate_reinsurance_structures(
-                ri_info_df, ri_scope_df)
+                account_df, location_df, ri_info_df, ri_scope_df)
             if not is_valid:
                 print("Reinsuarnce structure not valid")
                 for reinsurance_layer in reisurance_layers:

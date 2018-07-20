@@ -1,11 +1,14 @@
 <img src="https://oasislmf.org/packages/oasis_theme_package/themes/oasis_theme/assets/src/oasis-lmf-colour.png" alt="Oasis LMF logo" width="250"/>
 
 # ReinsuranceTestTool
-[![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/OasisLMF/ReinsuranceTestTool/master)
+| Run test tool   | Build |
+|--------------|-------|
+| [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/OasisLMF/ReinsuranceTestTool/master) | Stable |
+| [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/OasisLMF/ReinsuranceTestTool/dev) | Development |
 
 Test tool for new Oasis reinsurance functionality.
-A library of worked examples will be created that will be used to validate: 
-* the interpretation of the Open Expousre Data (OED) input format
+A library of worked examples will be created that will be used to validate:
+* the interpretation of the Open Exposure Data (OED) input format
 * the execution logic of the Oasis FM
 
 ## Setting up the environment
@@ -20,7 +23,7 @@ cat apt.txt | xargs apt-get install -y
 
 If using another distribution then the comparable packages will need to be identified and installed, or alternatively use a Docker image.
 
-We recommend using a Python virtual environment for running the excercises. To set up the your virtual environment, run the following commands in the project root directory:
+We recommend using a Python virtual environment for running the exercises. To set up the your virtual environment, run the following commands in the project root directory:
 
 ```
 virtualenv venv

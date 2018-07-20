@@ -1,5 +1,6 @@
 ipywidgets
 qgrid
+fileupload
 pandas==0.22.0
 tabulate==0.8.1
 pandas-datareader>=0.5.0

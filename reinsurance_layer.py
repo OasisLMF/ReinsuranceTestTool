@@ -473,9 +473,16 @@ class ReinsuranceLayer(object):
         profile_id = max(
             x.profile_id for x in add_profiles_args.fmprofiles_list)
 
+        print(add_profiles_args.fmprofiles_list)
         # Add any risk limits
         if self.risk_level == common.REINS_RISK_LEVEL_PORTFOLIO:
-            pass
+            profile_id = profile_id + 1
+            add_profiles_args.fmprofiles_list.append(
+                common.get_reinsurance_profile(
+                    profile_id,
+                    limit=add_profiles_args.ri_info_row.OccLimit,
+                    ceded=add_profiles_args.ri_info_row.CededPercent
+            ))
         else:
             profile_id = profile_id + 1
             add_profiles_args.fmprofiles_list.append(
@@ -490,12 +497,12 @@ class ReinsuranceLayer(object):
                 add_profiles_args.node_layer_profile_map[(
                     node.name, add_profiles_args.layer_id)] = profile_id
 
-        # Add occurrence limit and share
-        profile_id = profile_id + 1
-        add_profiles_args.fmprofiles_list.append(
-            common.get_reinsurance_profile(
-                profile_id,
-                limit=add_profiles_args.ri_info_row.OccLimit,
+            # Add occurrence limit and share
+            profile_id = profile_id + 1
+            add_profiles_args.fmprofiles_list.append(
+                common.get_reinsurance_profile(
+                    profile_id,
+                    limit=add_profiles_args.ri_info_row.OccLimit,
             ))
         add_profiles_args.node_layer_profile_map[
             (add_profiles_args.program_node.name, add_profiles_args.layer_id)] = profile_id

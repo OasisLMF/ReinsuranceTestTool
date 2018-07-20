@@ -57,7 +57,7 @@ def valid_links(df_src, column_name, df_dest):
     Check that all unique values in df_src[column_name] map to df_dest[column_name]
     '''
     src_values = df_src[column_name].unique().tolist()
-    return df_dest.isin({column_name: src_values}).all() 
+    return df_dest.isin({column_name: src_values}).all()
 
 
 def validate_reinsurance_structures(account_df, location_df, ri_info_df, ri_scope_df):
@@ -128,7 +128,7 @@ def validate_reinsurance_structures(account_df, location_df, ri_info_df, ri_scop
             validation_messages.append(
                 "AGG XL cannot be combined with other reinsurance types")
             continue
-        
+
         if len(scope_risks) is not 1:
             is_valid = False
             validation_messages.append(
@@ -146,7 +146,7 @@ def validate_reinsurance_structures(account_df, location_df, ri_info_df, ri_scop
             validation_messages.append(
                 "SS cannot have non-specific scopes")
             continue
-        
+
         if has_quota_share and not all_scope_non_specific:
             is_valid = False
             validation_messages.append(
@@ -568,7 +568,7 @@ class ReinsuranceLayer(object):
             elif ri_info_row.ReinsType == common.REINS_TYPE_QUOTA_SHARE:
                 self._add_quota_share_profiles(add_profiles_args)
             elif ri_info_row.ReinsType == common.REINS_TYPE_SURPLUS_SHARE:
-                self._add_surplus_share_profiles(add_profiles_args)                
+                self._add_surplus_share_profiles(add_profiles_args)
             elif ri_info_row.ReinsType == common.REINS_TYPE_CAT_XL:
                 self._add_cat_xl_profiles(add_profiles_args)
             else:
@@ -613,11 +613,17 @@ class ReinsuranceLayer(object):
         self.fm_policytcs.to_csv("fm_policytc.csv", index=False)
         self.fm_xrefs.to_csv("fm_xref.csv", index=False)
 
+
         directory = self.name
         if os.path.exists(directory):
             shutil.rmtree(directory)
         os.mkdir(directory)
 
+        # place a copy in sub dir for reference
+        self.fmprogrammes.to_csv(os.path.join(directory,"fm_programme.csv"), index=False)
+        self.fmprofiles.to_csv(os.path.join(directory,"fm_profile.csv"), index=False)
+        self.fm_policytcs.to_csv(os.path.join(directory,"fm_policytc.csv"), index=False)
+        self.fm_xrefs.to_csv(os.path.join(directory,"fm_xref.csv"), index=False)
         input_files = common.GUL_INPUTS_FILES + common.IL_INPUTS_FILES
 
         for input_file in input_files:

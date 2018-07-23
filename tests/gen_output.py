@@ -17,38 +17,38 @@ examples_list = [d for d in examples_paths if os.path.isdir(d)]
 
 print(os.listdir(input_dir))
 for case in examples_list:
-    print(case)
-    (
-        account_df, 
-        location_df, 
-        ri_info_df, 
-        ri_scope_df, 
-        do_reinsurance
-    ) = reinsurance_tester.load_oed_dfs(case, show_all=False)
-#    print(account_df)
+    try:
+        (
+            account_df, 
+            location_df, 
+            ri_info_df, 
+            ri_scope_df, 
+            do_reinsurance
+        ) = reinsurance_tester.load_oed_dfs(case, show_all=False)
 
+        net_losses = reinsurance_tester.run_test(
+            'run_reinsurance', 
+            account_df, 
+            location_df, 
+            ri_info_df, 
+            ri_scope_df, 
+            loss_factor=1.0, 
+            do_reinsurance=do_reinsurance
+        )
 
-    net_losses = reinsurance_tester.run_test(
-        'run_reinsurance', 
-        account_df, 
-        location_df, 
-        ri_info_df, 
-        ri_scope_df, 
-        loss_factor=1.0, 
-        do_reinsurance=do_reinsurance
-    )
-
-    for key in net_losses.keys():
-        file_out = "{}.csv".format(
-            os.path.join(output_dir,
-                         'calc',
-                         case.rsplit('/')[-1],
-                         key
-            )
-        ).replace(' ', '_')
-        print(file_out)    
-        try:
-            os.makedirs(str(Path(file_out).parents[0]))
-        except: 
-            print('Skip dir creation')
-        net_losses[key].to_csv(file_out)
+        for key in net_losses.keys():
+            file_out = "{}.csv".format(
+                os.path.join(output_dir,
+                             'calc',
+                             case.rsplit('/')[-1],
+                             key
+                )
+            ).replace(' ', '_')
+            print(file_out)    
+            try:
+                os.makedirs(str(Path(file_out).parents[0]))
+            except: 
+                print('Skip dir creation')
+            net_losses[key].to_csv(file_out, index=False)
+    except:
+        print('Case failed')

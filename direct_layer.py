@@ -71,12 +71,6 @@ class DirectLayer(object):
                 group_id = group_id + 1
                 site_agg_id = site_agg_id + 1
                 profile_id = profile_id + 1
-                fm_policytcs_list.append(common.FmPolicyTc(
-                    layer_id=1,
-                    level_id=1,
-                    agg_id=site_agg_id,
-                    profile_id=profile_id
-                ))
 
                 fmprofiles_list.append(
                     common.get_profile(

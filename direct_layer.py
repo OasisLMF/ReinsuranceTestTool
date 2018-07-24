@@ -188,6 +188,8 @@ class DirectLayer(object):
             guls_list.append(
                 common.GulRecord(event_id=1, item_id=item_id, sidx=-1, loss=event_loss))
             guls_list.append(
+                common.GulRecord(event_id=1, item_id=item_id, sidx=-2, loss=0))
+            guls_list.append(
                 common.GulRecord(event_id=1, item_id=item_id, sidx=1, loss=event_loss))
         guls_df = pd.DataFrame(guls_list)
         guls_df.to_csv("guls.csv", index=False)
@@ -196,6 +198,7 @@ class DirectLayer(object):
             net_flag = "-n"
         command = "../ktools/gultobin -S 1 < guls.csv | ../ktools/fmcalc -p direct {} -a {} | tee ils.bin | ../ktools/fmtocsv > ils.csv".format(
             net_flag, common.ALLOCATE_TO_ITEMS_BY_PREVIOUS_LEVEL_ALLOC_ID)
+        print(command)
         proc = subprocess.Popen(command, shell=True)
         proc.wait()
         if proc.returncode != 0:

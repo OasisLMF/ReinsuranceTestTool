@@ -7,5 +7,5 @@ ReinsNumber,PortfolioNumber,AccountNumber,PolicyNumber,LocationGroup,LocationNum
 6,1,1,1,,20423,,,,,,1,LOC
 7,1,1,1,,25747,,,,,,1,LOC
 8,1,1,1,,29289,,,,,,1,LOC
-9,1,1,1,,,,,,,,1,SEL
-10,1,1,1,,,,,,,,1,SEL
+9,,,,,,,,,,,1,LOC
+10,,,,,,,,,,,1,LOC

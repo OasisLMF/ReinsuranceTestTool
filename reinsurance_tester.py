@@ -170,8 +170,12 @@ def run_test(
             previous_inuring_priority = None
             previous_risk_level = None
             for inuring_priority in range(1, ri_info_df['InuringPriority'].max() + 1):
+                # Filter the reinsNumbers by inuring_priority
+                reins_numbers = ri_info_df[ri_info_df['InuringPriority'] == inuring_priority].ReinsNumber.tolist()
+                risk_level_set = set(ri_scope_df[ri_scope_df['ReinsNumber'].isin(reins_numbers)].RiskLevel)
+
                 for risk_level in common.REINS_RISK_LEVELS:
-                    if ri_scope_df[ri_scope_df.RiskLevel == risk_level].empty:
+                    if risk_level not in risk_level_set:
                         continue
                     reinsurance_layer_losses_df = run_inuring_level_risk_level(
                         inuring_priority,

@@ -39,3 +39,10 @@ def ri_run(example_dir):
     except Exception as err:
         print("Run failed")
         print(err)
+
+
+fm24 = ri_run('examples/ftest/fm24/')
+LOC_1 = fm24['Inuring priority:1 - Risk level:LOC']
+LOC_1.groupby(['location_number']).sum().loss_net
+
+

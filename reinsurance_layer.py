@@ -613,19 +613,18 @@ class ReinsuranceLayer(object):
                                 node_layer_profile_map[(node.name, layer, overlay_rule)]
                             )
 
-                            print(node.name)
-                            print(layer)
-                            print(overlay_rule)
-                            print(profiles_ids)
-                            fm_policytcs_list.append(common.FmPolicyTc(
-                                layer_id=layer,
-                                level_id=node.level_id - 1,
-                                agg_id=node.agg_id,
-                                profile_id=max(profiles_ids)
-                            ))
+                            print("\nStep 3 | layer:{}, overlay_loop:{}, level:{}, agg_id:{}, profiles_list:{}, max_profile:{} ".format(
+                                layer, overlay_rule, node.level_id - 1, node.agg_id, profiles_ids, max(profiles_ids)))
                         except:
                             print("No Value")
 
+                    fm_policytcs_list.append(common.FmPolicyTc(
+                        layer_id=layer,
+                        level_id=node.level_id - 1,
+                        agg_id=node.agg_id,
+                        profile_id=max(profiles_ids)
+                    ))
+                    print(fm_policytcs_list)
 
 
 

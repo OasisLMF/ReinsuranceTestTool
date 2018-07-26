@@ -68,7 +68,6 @@ def validate_reinsurance_structures(account_df, location_df, ri_info_df, ri_scop
     inuring_layers = {}
     for inuring_priority in range(1, ri_info_df['InuringPriority'].max() + 1):
         inuring_priority_ri_info_df = ri_info_df[ri_info_df.InuringPriority == inuring_priority]
-        print(inuring_priority_ri_info_df)
         if inuring_priority_ri_info_df.empty:
             continue
 
@@ -473,7 +472,6 @@ class ReinsuranceLayer(object):
         profile_id = max(
             x.profile_id for x in add_profiles_args.fmprofiles_list)
 
-        print(add_profiles_args.fmprofiles_list)
         # Add any risk limits
         if self.risk_level == common.REINS_RISK_LEVEL_PORTFOLIO:
             profile_id = profile_id + 1
@@ -550,7 +548,6 @@ class ReinsuranceLayer(object):
         # Step 1 - Build a tree representation of the insurance program, depening on the reinsuarnce risk level.
         #
         program_node = self._get_tree()
-        print(anytree.RenderTree(program_node))
 
         #
         # Step 2 - Overlay the reinsurance structure. Each resinsuarnce contact is a seperate layer.
@@ -558,9 +555,6 @@ class ReinsuranceLayer(object):
         layer_id = 0
         overlay_loop = 0
         for _, ri_info_row in self.ri_info.iterrows():
-            print("\n====== ReinsNumber: %d ======" % ri_info_row.ReinsNumber)
-            #layer_id = layer_id + 1
-
             overlay_loop += 1
             layer_id = ri_info_row.ReinsLayerNumber
 
@@ -588,7 +582,6 @@ class ReinsuranceLayer(object):
                 raise Exception("ReinsType not supported yet: {}".format(
                     ri_info_row.ReinsType))
 
-            print(add_profiles_args)
         #
         # Step 3 - Iterate over the tree and write out the Oasis structure.
         #
@@ -602,53 +595,32 @@ class ReinsuranceLayer(object):
                     )
                 )
 
-
+        # Note: Pending confirmation from Joh that ReinsLayerNumber is being used correctly
         for layer in range(1,max(self.ri_info.ReinsLayerNumber.tolist())+1):
             for node in anytree.iterators.LevelOrderIter(program_node):
                 if node.level_id > 1:
                     profiles_ids = []
+
+                    # The `overlay_rule` replaces using each resinsuarnce contact in a seperate layer
+                    # Collect overlaping unique combinations of (layer_id, level_id, agg_id) and combine into 
+                    # a single layer
                     for overlay_rule in range(1,overlay_loop+1):
                         try:
                             profiles_ids.append(
-                                node_layer_profile_map[(node.name, layer, overlay_rule)]
-                            )
-
-                            print("\nStep 3 | layer:{}, overlay_loop:{}, level:{}, agg_id:{}, profiles_list:{}, max_profile:{} ".format(
-                                layer, overlay_rule, node.level_id - 1, node.agg_id, profiles_ids, max(profiles_ids)))
+                                node_layer_profile_map[(node.name, layer, overlay_rule)])
                         except:
-                            print("No Value")
-
+                            pass
+                            #print("Invalid keys")
                     fm_policytcs_list.append(common.FmPolicyTc(
                         layer_id=layer,
                         level_id=node.level_id - 1,
                         agg_id=node.agg_id,
                         profile_id=max(profiles_ids)
                     ))
-                    print(fm_policytcs_list)
-
-
-
-
-
-        #max_layer_id = layer_id
-        #for layer_id in range(1, max_layer_id + 1):
-        #    for node in anytree.iterators.LevelOrderIter(program_node):
-        #        if node.level_id > 1:
-        #            print(node.name)
-        #            print(layer_id)
-        #            print(node_layer_profile_map[(node.name, layer_id)])
-        #            fm_policytcs_list.append(common.FmPolicyTc(
-        #                layer_id=layer_id,
-        #                level_id=node.level_id - 1,
-        #                agg_id=node.agg_id,
-        #                profile_id=node_layer_profile_map[(
-        #                    node.name, layer_id)]
-        #            ))
 
         self.fmprogrammes = pd.DataFrame(fmprogrammes_list)
         self.fmprofiles = pd.DataFrame(fmprofiles_list)
         self.fm_policytcs = pd.DataFrame(fm_policytcs_list)
-        print(self.fm_policytcs)
 
 
     def write_oasis_files(self):
@@ -660,7 +632,6 @@ class ReinsuranceLayer(object):
         self.fmprofiles.to_csv("fm_profile.csv", index=False)
         self.fm_policytcs.to_csv("fm_policytc.csv", index=False)
         self.fm_xrefs.to_csv("fm_xref.csv", index=False)
-
 
         directory = self.name
         if os.path.exists(directory):

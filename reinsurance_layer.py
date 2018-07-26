@@ -1,5 +1,6 @@
 import pandas as pd
 import os
+import logging
 import subprocess
 import anytree
 import shutil
@@ -178,8 +179,9 @@ class ReinsuranceLayer(object):
     """
 
     def __init__(self, name, ri_info, ri_scope, accounts, locations,
-                 items, coverages, fm_xrefs, xref_descriptions, risk_level):
+                 items, coverages, fm_xrefs, xref_descriptions, risk_level, logger=None):
 
+        self.logger = logger or logging.getLogger()
         self.name = name
         self.accounts = accounts
         self.locations = locations
@@ -547,7 +549,10 @@ class ReinsuranceLayer(object):
         #
         # Step 1 - Build a tree representation of the insurance program, depening on the reinsuarnce risk level.
         #
-        program_node = self._get_tree()
+        program_node  = self._get_tree()
+        self.logger.debug('program_node tree:')                                                                                                    
+        self.logger.debug(anytree.RenderTree(program_node))
+
 
         #
         # Step 2 - Overlay the reinsurance structure. Each resinsuarnce contact is a seperate layer.

@@ -9,6 +9,7 @@ import shutil
 import os
 import argparse
 import time
+import logging
 from reinsurance_layer import ReinsuranceLayer, validate_reinsurance_structures
 from direct_layer import DirectLayer
 import common
@@ -123,13 +124,14 @@ def run_test(
         run_name,
         account_df, location_df, ri_info_df, ri_scope_df,
         loss_factor,
-        do_reinsurance):
+        do_reinsurance,
+        logger=None):
     """
     Run the direct and reinsurance layers through the Oasis FM.abs
-    Returns an array of net loss data frames, the first for the direct layers 
+    Returns an array of net loss data frames, the first for the direct layers
     and then one per inuring layer.
     """
-    t_start = time.time() 
+    t_start = time.time()
 
 
     if os.path.exists(run_name):
@@ -204,6 +206,30 @@ def run_test(
     return net_losses
 
 
+
+def setup_logger(verbose):
+   if verbose:
+       log_dir = 'logs'
+       log_file = "run_{}.log".format(time.strftime("%Y%m%d-%H%M%S"))
+       log_level = logging.DEBUG
+       #log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+       log_format = '%(message)s\n'
+   else:
+       log_level = logging.INFO
+       log_format = '%(message)s'
+
+   if not os.path.exists(log_dir):
+       os.makedirs(log_dir)
+
+   #logging.basicConfig(stream=sys.stdout, level=log_level, format=log_format)
+   logging.basicConfig(level=log_level,
+                       format=log_format,
+                       filename=os.path.join(log_dir, log_file),
+                       filemode='w')
+   return logging.getLogger()
+
+
+
 if __name__ == "__main__":
     # execute only if run as a script
     parser = argparse.ArgumentParser(
@@ -218,6 +244,9 @@ if __name__ == "__main__":
     parser.add_argument(
         '-l', '--loss_factor', metavar='N', type=float, default=1.0,
         help='The loss factor to apply to TIVs.')
+    parser.add_argument(
+       '-d', '--debug', action='store_true', default=None,
+       help='Store Debugging Logs under ./logs')
 
     args = parser.parse_args()
 
@@ -225,13 +254,17 @@ if __name__ == "__main__":
     oed_dir = args.oed_dir
     loss_factor = args.loss_factor
 
+    if args.debug:
+        logger = setup_logger(args.debug)
+
     (account_df, location_df, ri_info_df, ri_scope_df, do_reinsurance) = load_oed_dfs(oed_dir)
 
     net_losses = run_test(
         run_name,
         account_df, location_df, ri_info_df, ri_scope_df,
         loss_factor,
-        do_reinsurance)
+        do_reinsurance,
+        logger)
 
     for (description, net_loss) in net_losses.items():
         print(description)

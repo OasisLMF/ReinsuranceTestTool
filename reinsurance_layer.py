@@ -68,7 +68,6 @@ def validate_reinsurance_structures(account_df, location_df, ri_info_df, ri_scop
     inuring_layers = {}
     for inuring_priority in range(1, ri_info_df['InuringPriority'].max() + 1):
         inuring_priority_ri_info_df = ri_info_df[ri_info_df.InuringPriority == inuring_priority]
-        print(inuring_priority_ri_info_df)
         if inuring_priority_ri_info_df.empty:
             continue
 
@@ -203,7 +202,7 @@ class ReinsuranceLayer(object):
 
         self.add_profiles_args = namedtuple(
             "AddProfilesArgs",
-            "program_node, ri_info_row, scope_rows, layer_id, "
+            "program_node, ri_info_row, scope_rows, overlay_loop, layer_id, "
             "node_layer_profile_map, fmprofiles_list, nolossprofile_id, passthroughprofile_id")
 
     def _add_program_node(self, level_id):
@@ -339,9 +338,9 @@ class ReinsuranceLayer(object):
         # not explicitly covered are unaffected
         for node in anytree.iterators.LevelOrderIter(add_profiles_args.program_node):
             add_profiles_args.node_layer_profile_map[(
-                node.name, add_profiles_args.layer_id)] = add_profiles_args.nolossprofile_id
+                node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = add_profiles_args.nolossprofile_id
         add_profiles_args.node_layer_profile_map[(
-            add_profiles_args.program_node.name, add_profiles_args.layer_id)] = add_profiles_args.passthroughprofile_id
+            add_profiles_args.program_node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = add_profiles_args.passthroughprofile_id
 
         profile_id = profile_id + 1
         add_profiles_args.fmprofiles_list.append(common.get_reinsurance_profile(
@@ -357,21 +356,21 @@ class ReinsuranceLayer(object):
                     filter_=lambda node: self._does_location_node_match_scope_row(node, ri_scope_row))
                 for node in nodes:
                     add_profiles_args.node_layer_profile_map[(
-                        node.name, add_profiles_args.layer_id)] = profile_id
+                        node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
             elif ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_POLICY:
                 nodes = anytree.search.findall(
                     add_profiles_args.program_node,
                     filter_=lambda node: self._does_policy_node_match_scope_row(node, ri_scope_row))
                 for node in nodes:
                     add_profiles_args.node_layer_profile_map[(
-                        node.name, add_profiles_args.layer_id)] = profile_id
+                        node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
             elif ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_ACCOUNT:
                 nodes = anytree.search.findall(
                     add_profiles_args.program_node,
                     filter_=lambda node: self._does_account_node_match_scope_row(node, ri_scope_row))
                 for node in nodes:
                     add_profiles_args.node_layer_profile_map[(
-                        node.name, add_profiles_args.layer_id)] = profile_id
+                        node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
             else:
                 raise Exception(
                     "Unsupported risk level: {}".format(ri_scope_row.RiskLevel))
@@ -384,9 +383,9 @@ class ReinsuranceLayer(object):
         # not explcitly covered are unaffected
         for node in anytree.iterators.LevelOrderIter(add_profiles_args.program_node):
             add_profiles_args.node_layer_profile_map[(
-                node.name, add_profiles_args.layer_id)] = add_profiles_args.nolossprofile_id
+                node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = add_profiles_args.nolossprofile_id
         add_profiles_args.node_layer_profile_map[(
-            add_profiles_args.program_node.name, add_profiles_args.layer_id)] = add_profiles_args.passthroughprofile_id
+            add_profiles_args.program_node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = add_profiles_args.passthroughprofile_id
 
         for _, ri_scope_row in add_profiles_args.scope_rows.iterrows():
 
@@ -404,21 +403,21 @@ class ReinsuranceLayer(object):
                     filter_=lambda node: self._does_location_node_match_scope_row(node, ri_scope_row))
                 for node in nodes:
                     add_profiles_args.node_layer_profile_map[(
-                        node.name, add_profiles_args.layer_id)] = profile_id
+                        node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
             elif ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_POLICY:
                 nodes = anytree.search.findall(
                     add_profiles_args.program_node,
                     filter_=lambda node: self._does_policy_node_match_scope_row(node, ri_scope_row))
                 for node in nodes:
                     add_profiles_args.node_layer_profile_map[(
-                        node.name, add_profiles_args.layer_id)] = profile_id
+                        node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
             elif ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_ACCOUNT:
                 nodes = anytree.search.findall(
                     add_profiles_args.program_node,
                     filter_=lambda node: self._does_account_node_match_scope_row(node, ri_scope_row))
                 for node in nodes:
                     add_profiles_args.node_layer_profile_map[(
-                        node.name, add_profiles_args.layer_id)] = profile_id
+                        node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
             else:
                 raise Exception(
                     "Unsupported risk level: {}".format(ri_scope_row.RiskLevel))
@@ -431,9 +430,9 @@ class ReinsuranceLayer(object):
         # not explicitly covered are unaffected
         for node in anytree.iterators.LevelOrderIter(add_profiles_args.program_node):
             add_profiles_args.node_layer_profile_map[(
-                node.name, add_profiles_args.layer_id)] = add_profiles_args.nolossprofile_id
+                node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = add_profiles_args.nolossprofile_id
         add_profiles_args.node_layer_profile_map[(
-            add_profiles_args.program_node.name, add_profiles_args.layer_id)] = add_profiles_args.passthroughprofile_id
+            add_profiles_args.program_node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = add_profiles_args.passthroughprofile_id
 
         for _, ri_scope_row in add_profiles_args.scope_rows.iterrows():
             profile_id = profile_id + 1
@@ -449,21 +448,21 @@ class ReinsuranceLayer(object):
                     filter_=lambda node: self._does_location_node_match_scope_row(node, ri_scope_row))
                 for node in nodes:
                     add_profiles_args.node_layer_profile_map[(
-                        node.name, add_profiles_args.layer_id)] = profile_id
+                        node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
             elif ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_POLICY:
                 nodes = anytree.search.findall(
                     add_profiles_args.program_node,
                     filter_=lambda node: self._does_policy_node_match_scope_row(node, ri_scope_row))
                 for node in nodes:
                     add_profiles_args.node_layer_profile_map[(
-                        node.name, add_profiles_args.layer_id)] = profile_id
+                        node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
             elif ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_ACCOUNT:
                 nodes = anytree.search.findall(
                     add_profiles_args.program_node,
                     filter_=lambda node: self._does_account_node_match_scope_row(node, ri_scope_row))
                 for node in nodes:
                     add_profiles_args.node_layer_profile_map[(
-                        node.name, add_profiles_args.layer_id)] = profile_id
+                        node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
             else:
                 raise Exception(
                     "Unsupported risk level: {}".format(ri_scope_row.RiskLevel))
@@ -473,7 +472,6 @@ class ReinsuranceLayer(object):
         profile_id = max(
             x.profile_id for x in add_profiles_args.fmprofiles_list)
 
-        print(add_profiles_args.fmprofiles_list)
         # Add any risk limits
         if self.risk_level == common.REINS_RISK_LEVEL_PORTFOLIO:
             profile_id = profile_id + 1
@@ -495,7 +493,7 @@ class ReinsuranceLayer(object):
                 add_profiles_args.program_node, filter_=lambda node: node.level_id == 2)
             for node in nodes:
                 add_profiles_args.node_layer_profile_map[(
-                    node.name, add_profiles_args.layer_id)] = profile_id
+                    node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
 
             # Add occurrence limit and share
             profile_id = profile_id + 1
@@ -505,7 +503,7 @@ class ReinsuranceLayer(object):
                     limit=add_profiles_args.ri_info_row.OccLimit,
             ))
         add_profiles_args.node_layer_profile_map[
-            (add_profiles_args.program_node.name, add_profiles_args.layer_id)] = profile_id
+            (add_profiles_args.program_node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
 
     def _add_cat_xl_profiles(self, add_profiles_args):
         profile_id = max(
@@ -518,7 +516,7 @@ class ReinsuranceLayer(object):
                 limit=add_profiles_args.ri_info_row.OccLimit
             ))
         add_profiles_args.node_layer_profile_map[
-            (add_profiles_args.program_node.name, add_profiles_args.layer_id)] = profile_id
+            (add_profiles_args.program_node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
 
     def generate_oasis_structures(self):
         '''
@@ -555,8 +553,10 @@ class ReinsuranceLayer(object):
         # Step 2 - Overlay the reinsurance structure. Each resinsuarnce contact is a seperate layer.
         #
         layer_id = 0
+        overlay_loop = 0
         for _, ri_info_row in self.ri_info.iterrows():
-            layer_id = layer_id + 1
+            overlay_loop += 1
+            layer_id = ri_info_row.ReinsLayerNumber
 
             scope_rows = self.ri_scope[
                 (self.ri_scope.ReinsNumber == ri_info_row.ReinsNumber) &
@@ -565,7 +565,7 @@ class ReinsuranceLayer(object):
                 continue
 
             add_profiles_args = self.add_profiles_args(
-                program_node, ri_info_row, scope_rows, layer_id, node_layer_profile_map,
+                program_node, ri_info_row, scope_rows, overlay_loop, layer_id, node_layer_profile_map,
                 fmprofiles_list, nolossprofile_id, passthroughprofile_id)
 
             if ri_info_row.ReinsType == common.REINS_TYPE_FAC:
@@ -594,21 +594,34 @@ class ReinsuranceLayer(object):
                         to_agg_id=node.parent.agg_id
                     )
                 )
-        max_layer_id = layer_id
-        for layer_id in range(1, max_layer_id + 1):
+
+        # Note: Pending confirmation from Joh that ReinsLayerNumber is being used correctly
+        for layer in range(1,max(self.ri_info.ReinsLayerNumber.tolist())+1):
             for node in anytree.iterators.LevelOrderIter(program_node):
                 if node.level_id > 1:
+                    profiles_ids = []
+
+                    # The `overlay_rule` replaces using each resinsuarnce contact in a seperate layer
+                    # Collect overlaping unique combinations of (layer_id, level_id, agg_id) and combine into 
+                    # a single layer
+                    for overlay_rule in range(1,overlay_loop+1):
+                        try:
+                            profiles_ids.append(
+                                node_layer_profile_map[(node.name, layer, overlay_rule)])
+                        except:
+                            pass
+                            #print("Invalid keys")
                     fm_policytcs_list.append(common.FmPolicyTc(
-                        layer_id=layer_id,
+                        layer_id=layer,
                         level_id=node.level_id - 1,
                         agg_id=node.agg_id,
-                        profile_id=node_layer_profile_map[(
-                            node.name, layer_id)]
+                        profile_id=max(profiles_ids)
                     ))
 
         self.fmprogrammes = pd.DataFrame(fmprogrammes_list)
         self.fmprofiles = pd.DataFrame(fmprofiles_list)
         self.fm_policytcs = pd.DataFrame(fm_policytcs_list)
+
 
     def write_oasis_files(self):
         """
@@ -619,7 +632,6 @@ class ReinsuranceLayer(object):
         self.fmprofiles.to_csv("fm_profile.csv", index=False)
         self.fm_policytcs.to_csv("fm_policytc.csv", index=False)
         self.fm_xrefs.to_csv("fm_xref.csv", index=False)
-
 
         directory = self.name
         if os.path.exists(directory):

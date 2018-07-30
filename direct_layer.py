@@ -192,8 +192,7 @@ class DirectLayer(object):
             pd.DataFrame({'LocationNumber': locations_list})
         ],axis=1)  
         # filter 'item_id' that exisit in 'from_agg_id'
-        return item_map_df[item_map_df['item_id'].isin(
-               from_agg_ids)].rename(index=str, columns={"item_id": "from_agg_id"})
+        return item_map_df[item_map_df['item_id'].isin(from_agg_ids)]
 
     def apply_fm(self, loss_percentage_of_tiv=1.0, net=False):
         guls_list = list()

@@ -203,6 +203,10 @@ def run_test(
         os.chdir(cwd)
         t_end = time.time()
         print("Exec time: {}".format(t_end - t_start))
+        if logger:
+            logger.debug("Items_to_Locations: mapping")
+            logger.debug(tabulate(direct_layer.report_item_ids(),
+                         headers='keys', tablefmt='psql', floatfmt=".2f")) 
     return net_losses
 
 

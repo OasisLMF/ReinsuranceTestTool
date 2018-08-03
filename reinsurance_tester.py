@@ -203,6 +203,10 @@ def run_test(
         os.chdir(cwd)
         t_end = time.time()
         print("Exec time: {}".format(t_end - t_start))
+        if logger:
+            logger.debug("Items_to_Locations: mapping")
+            logger.debug(tabulate(direct_layer.report_item_ids(),
+                         headers='keys', tablefmt='psql', floatfmt=".2f")) 
     return net_losses
 
 
@@ -253,9 +257,7 @@ if __name__ == "__main__":
     run_name = args.name
     oed_dir = args.oed_dir
     loss_factor = args.loss_factor
-
-    if args.debug:
-        logger = setup_logger(args.debug)
+    logger = (setup_logger(args.debug) if args.debug else None)
 
     (account_df, location_df, ri_info_df, ri_scope_df, do_reinsurance) = load_oed_dfs(oed_dir)
 
@@ -269,5 +271,8 @@ if __name__ == "__main__":
     for (description, net_loss) in net_losses.items():
         print(description)
         print(tabulate(net_loss, headers='keys', tablefmt='psql', floatfmt=".2f"))
+        if args.debug:
+            logger.debug(description)
+            logger.debug(tabulate(net_loss, headers='keys', tablefmt='psql', floatfmt=".2f"))
         print("")
         print("")

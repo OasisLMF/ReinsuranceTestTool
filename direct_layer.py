@@ -27,6 +27,8 @@ class DirectLayer(object):
         self.fm_xrefs = pd.DataFrame()
         self.xref_descriptions = pd.DataFrame()
 
+        self.item_id_dict = dict()
+
     def _get_location_tiv(self, location, coverage_type_id):
         switcher = {
             common.BUILDING_COVERAGE_TYPE_ID: location.BuildingTIV,
@@ -95,10 +97,12 @@ class DirectLayer(object):
                     tiv = self._get_location_tiv(location, coverage_type_id)
                     if tiv > 0:
                         coverage_id = coverage_id + 1
+                        self.item_id_dict[coverage_id] = location
+
                         coverages_list.append(
                             common.Coverage(
                                 coverage_id=coverage_id,
-                                tiv=tiv
+                                tiv=tiv,
                             ))
                         for peril in common.PERILS:
                             item_id = item_id + 1
@@ -174,6 +178,21 @@ class DirectLayer(object):
             if proc.returncode != 0:
                 raise Exception(
                     "Failed to convert {}: {}".format(input_file_path, command))
+
+
+    def report_item_ids(self):
+        """
+        return a dataframe showing the relationship between item_id's and Locations
+        """
+        locations_list  = [self.item_id_dict[ID].LocationNumber for ID in self.item_ids] 
+        from_agg_ids = self.fmprogrammes[self.fmprogrammes['level_id'] == 1].from_agg_id.tolist()
+        item_map_df = pd.concat([
+            self.items[['item_id','coverage_id']],
+            self.coverages['tiv'],
+            pd.DataFrame({'LocationNumber': locations_list})
+        ],axis=1)  
+        # filter 'item_id' that exisit in 'from_agg_id'
+        return item_map_df[item_map_df['item_id'].isin(from_agg_ids)]
 
     def apply_fm(self, loss_percentage_of_tiv=1.0, net=False):
         guls_list = list()

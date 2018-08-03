@@ -5,6 +5,7 @@ import subprocess
 import anytree
 import shutil
 import common
+import json
 from collections import namedtuple
 
 
@@ -550,9 +551,6 @@ class ReinsuranceLayer(object):
         # Step 1 - Build a tree representation of the insurance program, depening on the reinsuarnce risk level.
         #
         program_node  = self._get_tree()
-        self.logger.debug('program_node tree:')                                                                                                    
-        self.logger.debug(anytree.RenderTree(program_node))
-
 
         #
         # Step 2 - Overlay the reinsurance structure. Each resinsuarnce contact is a seperate layer.
@@ -586,6 +584,7 @@ class ReinsuranceLayer(object):
             else:
                 raise Exception("ReinsType not supported yet: {}".format(
                     ri_info_row.ReinsType))
+
 
         #
         # Step 3 - Iterate over the tree and write out the Oasis structure.
@@ -627,6 +626,20 @@ class ReinsuranceLayer(object):
         self.fmprofiles = pd.DataFrame(fmprofiles_list)
         self.fm_policytcs = pd.DataFrame(fm_policytcs_list)
 
+
+        # Log Reinsurance structures
+        if self.logger:
+            self.logger.debug('program_node tree: "{}"'.format(self.name))
+            self.logger.debug(anytree.RenderTree(add_profiles_args.program_node))
+            self.logger.debug('policytc_map: "{}"'.format(self.name))
+            policytc_map = dict()
+            for k in add_profiles_args.node_layer_profile_map.keys():
+                profile_id = add_profiles_args.node_layer_profile_map[k]
+                if profile_id > 1:
+                    policytc_map["(Name=%s, layer_id=%s, overlay_loop=%s)" % k] = profile_id
+            self.logger.debug(json.dumps(policytc_map, indent=4))
+            self.logger.debug('fm_profile: "{}"'.format(self.name))
+            self.logger.debug(self.fmprofiles)
 
     def write_oasis_files(self):
         """

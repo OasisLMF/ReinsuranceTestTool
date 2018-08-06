@@ -271,6 +271,10 @@ if __name__ == "__main__":
     for (description, net_loss) in net_losses.items():
         print(description)
         print(tabulate(net_loss, headers='keys', tablefmt='psql', floatfmt=".2f"))
+        if 'loss_net' in net_loss.columns:
+            loc_sum_df = net_loss.groupby(['location_number']).sum()
+            print(tabulate(loc_sum_df[['tiv','loss_pre', 'loss_net']], 
+                  headers='keys', tablefmt='psql', floatfmt=".2f"))
         if args.debug:
             logger.debug(description)
             logger.debug(tabulate(net_loss, headers='keys', tablefmt='psql', floatfmt=".2f"))

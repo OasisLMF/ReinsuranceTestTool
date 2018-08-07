@@ -451,7 +451,8 @@ class ReinsuranceLayer(object):
         # not explicitly covered are unaffected
         for node in anytree.iterators.LevelOrderIter(add_profiles_args.program_node):
             add_profiles_args.node_layer_profile_map[(
-                node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = add_profiles_args.nolossprofile_id
+                    node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = add_profiles_args.nolossprofile_id
+
         add_profiles_args.node_layer_profile_map[(
             add_profiles_args.program_node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = add_profiles_args.passthroughprofile_id
 
@@ -487,6 +488,19 @@ class ReinsuranceLayer(object):
             else:
                 raise Exception(
                     "Unsupported risk level: {}".format(ri_scope_row.RiskLevel))
+
+        # Check ri_info row for overall OccLimit
+        if add_profiles_args.ri_info_row.OccLimit:
+            profile_id = profile_id + 1
+            add_profiles_args.fmprofiles_list.append(
+                common.get_occlim_profile(
+                    profile_id,
+                    limit=add_profiles_args.ri_info_row.OccLimit,
+            ))
+            add_profiles_args.node_layer_profile_map[
+                (add_profiles_args.program_node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
+
+
 
 
     def _add_quota_share_profiles(self, add_profiles_args):
@@ -565,6 +579,9 @@ class ReinsuranceLayer(object):
 
         node_layer_profile_map = {}
 
+        self.logger.debug(fmprofiles_list)
+
+
         #
         # Step 1 - Build a tree representation of the insurance program, depening on the reinsuarnce risk level.
         #
@@ -634,7 +651,7 @@ class ReinsuranceLayer(object):
                     profiles_ids = []
 
                     # The `overlay_rule` replaces using each resinsuarnce contact in a seperate layer
-                    # Collect overlaping unique combinations of (layer_id, level_id, agg_id) and combine into 
+                    # Collect overlaping unique combinations of (layer_id, level_id, agg_id) and combine into
                     # a single layer
                     for overlay_rule in range(1,overlay_loop+1):
                         try:

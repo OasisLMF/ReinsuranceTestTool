@@ -440,6 +440,9 @@ class ReinsuranceLayer(object):
                 raise Exception(
                     "Unsupported risk level: {}".format(ri_scope_row.RiskLevel))
 
+
+
+
     def _add_surplus_share_profiles(self, add_profiles_args):
         profile_id = max(
             x.profile_id for x in add_profiles_args.fmprofiles_list)
@@ -567,6 +570,10 @@ class ReinsuranceLayer(object):
         #
         program_node  = self._get_tree()
 
+        if self.logger:
+            self.logger.debug('program_node tree: "{}"'.format(self.name))
+            self.logger.debug(anytree.RenderTree(program_node))
+
         #
         # Step 2 - Overlay the reinsurance structure. Each resinsuarnce contact is a seperate layer.
         #
@@ -579,6 +586,12 @@ class ReinsuranceLayer(object):
             scope_rows = self.ri_scope[
                 (self.ri_scope.ReinsNumber == ri_info_row.ReinsNumber) &
                 (self.ri_scope.RiskLevel == self.risk_level)]
+
+            if self.logger:
+                pd.set_option('display.width', 1000)
+                self.logger.debug('ri_scope: "{}"'.format(self.name))
+                self.logger.debug(scope_rows)
+
             if scope_rows.shape[0] == 0:
                 continue
 
@@ -644,8 +657,6 @@ class ReinsuranceLayer(object):
 
         # Log Reinsurance structures
         if self.logger:
-            self.logger.debug('program_node tree: "{}"'.format(self.name))
-            self.logger.debug(anytree.RenderTree(add_profiles_args.program_node))
             self.logger.debug('policytc_map: "{}"'.format(self.name))
             policytc_map = dict()
             for k in add_profiles_args.node_layer_profile_map.keys():

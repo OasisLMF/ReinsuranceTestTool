@@ -440,6 +440,16 @@ class ReinsuranceLayer(object):
                 raise Exception(
                     "Unsupported risk level: {}".format(ri_scope_row.RiskLevel))
 
+        # Check ri_info row for overall OccLimit
+        if add_profiles_args.ri_info_row.OccLimit:
+            profile_id = profile_id + 1
+            add_profiles_args.fmprofiles_list.append(
+                common.get_occlim_profile(
+                    profile_id,
+                    limit=add_profiles_args.ri_info_row.OccLimit,
+            ))
+            add_profiles_args.node_layer_profile_map[
+                (add_profiles_args.program_node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
 
 
 

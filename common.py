@@ -262,6 +262,29 @@ def get_reinsurance_profile(
         share3=1.0        # Not used
         )
 
+def get_occlim_profile(
+    profile_id,
+    attachment=0,
+    limit=0,
+    ceded=1.0
+    ):
+    
+    if limit == 0:
+        limit = LARGE_VALUE
+
+    return FmProfile(
+        profile_id=profile_id,
+        calcrule_id=CALCRULE_ID_OCCURRENCE_LIMIT_AND_SHARE,
+        deductible1=0,  # Not used
+        deductible2=0,  # Not used
+        deductible3=0,  # Not used
+        attachment=attachment,
+        limit=limit,
+        share1=0,       # Not used
+        share2=1.0,     # Not used
+        share3=1.0      # Not used
+        )
+
 def run_fm(
     input_name,
     output_name,

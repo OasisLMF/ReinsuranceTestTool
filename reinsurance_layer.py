@@ -270,6 +270,11 @@ class ReinsuranceLayer(object):
                         node.policy_number, node.location_number)
         scope_row_summary = (ri_scope_row.AccountNumber,
                              ri_scope_row.PolicyNumber, ri_scope_row.LocationNumber)
+        if (node_summary == scope_row_summary):
+            self.logger.debug('Matching node: location to scope\n node: {}, ri_scope: {}'.format(
+                str(node_summary),
+                str(scope_row_summary),
+            ))
         return (node_summary == scope_row_summary)
 
     def _does_policy_node_match_scope_row(self, node, ri_scope_row):
@@ -277,6 +282,11 @@ class ReinsuranceLayer(object):
                         node.policy_number, common.NOT_SET_ID)
         scope_row_summary = (ri_scope_row.AccountNumber,
                              ri_scope_row.PolicyNumber, common.NOT_SET_ID)
+        if (node_summary == scope_row_summary):
+            self.logger.debug('Matching node: policy to scope\n node: {}, ri_scope: {}'.format(
+                str(node_summary),
+                str(scope_row_summary),
+            ))
         return (node_summary == scope_row_summary)
 
     def _does_account_node_match_scope_row(self, node, ri_scope_row):
@@ -284,6 +294,11 @@ class ReinsuranceLayer(object):
                         common.NOT_SET_ID, common.NOT_SET_ID)
         scope_row_summary = (ri_scope_row.AccountNumber,
                              common.NOT_SET_ID, common.NOT_SET_ID)
+        if (node_summary == scope_row_summary):
+            self.logger.debug('Matching node: account to scope\n node: {}, ri_scope: {}'.format(
+                str(node_summary),
+                str(scope_row_summary),
+            ))
         return (node_summary == scope_row_summary)
 
     def _get_tree(self):

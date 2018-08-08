@@ -265,6 +265,8 @@ class ReinsuranceLayer(object):
             policy_number=common.NOT_SET_ID,
             location_number=common.NOT_SET_ID)
 
+
+
     def _does_location_node_match_scope_row(self, node, ri_scope_row):
         node_summary = (node.account_number,
                         node.policy_number, node.location_number)
@@ -280,8 +282,7 @@ class ReinsuranceLayer(object):
     def _does_policy_node_match_scope_row(self, node, ri_scope_row):
         node_summary = (node.account_number,
                         node.policy_number, common.NOT_SET_ID)
-        scope_row_summary = (ri_scope_row.AccountNumber,
-                             ri_scope_row.PolicyNumber, common.NOT_SET_ID)
+        scope_row_summary = (ri_scope_row.AccountNumber, ri_scope_row.PolicyNumber, common.NOT_SET_ID)
         if (node_summary == scope_row_summary):
             self.logger.debug('Matching node: policy to scope\n node: {}, ri_scope: {}'.format(
                 str(node_summary),
@@ -290,6 +291,10 @@ class ReinsuranceLayer(object):
         return (node_summary == scope_row_summary)
 
     def _does_account_node_match_scope_row(self, node, ri_scope_row):
+        search_dict = {
+            'AccountNumber':  ri_scope_row.AccountNumber,
+        }
+        return self._match_node(node, search_dict)
         node_summary = (node.account_number,
                         common.NOT_SET_ID, common.NOT_SET_ID)
         scope_row_summary = (ri_scope_row.AccountNumber,
@@ -300,6 +305,19 @@ class ReinsuranceLayer(object):
                 str(scope_row_summary),
             ))
         return (node_summary == scope_row_summary)
+
+    # More generic but slower (testing only)
+    def _match_node(self, node, search_dict):
+        node_dict = {
+            'AccountNumber':  node.account_number,
+            'PolicyNumber':   node.policy_number,
+            'LocationNumber': node.location_number,
+        }
+        self.logger.debug('Matching node: \n\t node: {}, \n\t search: {}'.format(
+            str(node_dict),
+            str(search_dict),
+        ))
+        return search_dict.items() <= node_dict.items()
 
     def _get_tree(self):
         current_location_number = 0
@@ -393,11 +411,11 @@ class ReinsuranceLayer(object):
                 raise Exception(
                     "Unsupported risk level: {}".format(ri_scope_row.RiskLevel))
 
+    # Need to check Matching rules for Per Risk with Joh
     def _add_per_risk_profiles(self, add_profiles_args):
         profile_id = max(
             x.profile_id for x in add_profiles_args.fmprofiles_list)
 
-        # Add pass through nodes at all levels so that the risks
         # not explcitly covered are unaffected
         for node in anytree.iterators.LevelOrderIter(add_profiles_args.program_node):
             add_profiles_args.node_layer_profile_map[(
@@ -406,19 +424,18 @@ class ReinsuranceLayer(object):
             add_profiles_args.program_node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = add_profiles_args.passthroughprofile_id
 
         for _, ri_scope_row in add_profiles_args.scope_rows.iterrows():
-
             profile_id = profile_id + 1
             add_profiles_args.fmprofiles_list.append(common.get_reinsurance_profile(
                 profile_id,
                 attachment=add_profiles_args.ri_info_row.RiskAttachmentPoint,
                 limit=add_profiles_args.ri_info_row.RiskLimit,
-                ceded=ri_scope_row.CededPercent
+                ceded=add_profiles_args.ri_info_row.PlacementPercent
             ))
 
             if ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_LOCATION:
                 nodes = anytree.search.findall(
                     add_profiles_args.program_node,
-                    filter_=lambda node: self._does_location_node_match_scope_row(node, ri_scope_row))
+                    filter_=lambda node: self._match_node(node, {'PolicyNumber': ri_scope_row.PolicyNumber}))
                 for node in nodes:
                     add_profiles_args.node_layer_profile_map[(
                         node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
@@ -450,7 +467,6 @@ class ReinsuranceLayer(object):
             ))
             add_profiles_args.node_layer_profile_map[
                 (add_profiles_args.program_node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
-
 
 
     def _add_surplus_share_profiles(self, add_profiles_args):
@@ -688,9 +704,10 @@ class ReinsuranceLayer(object):
             policytc_map = dict()
             for k in add_profiles_args.node_layer_profile_map.keys():
                 profile_id = add_profiles_args.node_layer_profile_map[k]
-                if profile_id > 1:
-                    policytc_map["(Name=%s, layer_id=%s, overlay_loop=%s)" % k] = profile_id
+                policytc_map["(Name=%s, layer_id=%s, overlay_loop=%s)" % k] = profile_id
             self.logger.debug(json.dumps(policytc_map, indent=4))
+            self.logger.debug('fm_policytcs: "{}"'.format(self.name))
+            self.logger.debug(self.fm_policytcs)
             self.logger.debug('fm_profile: "{}"'.format(self.name))
             self.logger.debug(self.fmprofiles)
 

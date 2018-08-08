@@ -211,26 +211,27 @@ def run_test(
 
 
 
-def setup_logger(verbose):
-   if verbose:
-       log_dir = 'logs'
-       log_file = "run_{}.log".format(time.strftime("%Y%m%d-%H%M%S"))
-       log_level = logging.DEBUG
-       #log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-       log_format = '%(message)s\n'
-   else:
-       log_level = logging.INFO
-       log_format = '%(message)s'
+def setup_logger(log_name):
+    log_file = "run_{}.log".format(time.strftime("%Y%m%d-%H%M%S"))
+    if log_name:
+        log_file = "{}.log".format(log_name)
 
-   if not os.path.exists(log_dir):
-       os.makedirs(log_dir)
+    log_dir = 'logs'
+    
 
-   #logging.basicConfig(stream=sys.stdout, level=log_level, format=log_format)
-   logging.basicConfig(level=log_level,
-                       format=log_format,
-                       filename=os.path.join(log_dir, log_file),
-                       filemode='w')
-   return logging.getLogger()
+    log_level = logging.DEBUG
+    #log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    log_format = '%(message)s\n'
+
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+
+    #logging.basicConfig(stream=sys.stdout, level=log_level, format=log_format)
+    logging.basicConfig(level=log_level,
+                        format=log_format,
+                        filename=os.path.join(log_dir, log_file),
+                        filemode='w')
+    return logging.getLogger()
 
 
 
@@ -249,7 +250,7 @@ if __name__ == "__main__":
         '-l', '--loss_factor', metavar='N', type=float, default=1.0,
         help='The loss factor to apply to TIVs.')
     parser.add_argument(
-       '-d', '--debug', action='store_true', default=None,
+       '-d', '--debug', action='store', default=None,
        help='Store Debugging Logs under ./logs')
 
     args = parser.parse_args()

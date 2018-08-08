@@ -270,6 +270,11 @@ class ReinsuranceLayer(object):
                         node.policy_number, node.location_number)
         scope_row_summary = (ri_scope_row.AccountNumber,
                              ri_scope_row.PolicyNumber, ri_scope_row.LocationNumber)
+        if (node_summary == scope_row_summary):
+            self.logger.debug('Matching node: location to scope\n node: {}, ri_scope: {}'.format(
+                str(node_summary),
+                str(scope_row_summary),
+            ))
         return (node_summary == scope_row_summary)
 
     def _does_policy_node_match_scope_row(self, node, ri_scope_row):
@@ -277,6 +282,11 @@ class ReinsuranceLayer(object):
                         node.policy_number, common.NOT_SET_ID)
         scope_row_summary = (ri_scope_row.AccountNumber,
                              ri_scope_row.PolicyNumber, common.NOT_SET_ID)
+        if (node_summary == scope_row_summary):
+            self.logger.debug('Matching node: policy to scope\n node: {}, ri_scope: {}'.format(
+                str(node_summary),
+                str(scope_row_summary),
+            ))
         return (node_summary == scope_row_summary)
 
     def _does_account_node_match_scope_row(self, node, ri_scope_row):
@@ -284,6 +294,11 @@ class ReinsuranceLayer(object):
                         common.NOT_SET_ID, common.NOT_SET_ID)
         scope_row_summary = (ri_scope_row.AccountNumber,
                              common.NOT_SET_ID, common.NOT_SET_ID)
+        if (node_summary == scope_row_summary):
+            self.logger.debug('Matching node: account to scope\n node: {}, ri_scope: {}'.format(
+                str(node_summary),
+                str(scope_row_summary),
+            ))
         return (node_summary == scope_row_summary)
 
     def _get_tree(self):
@@ -425,6 +440,19 @@ class ReinsuranceLayer(object):
                 raise Exception(
                     "Unsupported risk level: {}".format(ri_scope_row.RiskLevel))
 
+        # Check ri_info row for overall OccLimit
+        if add_profiles_args.ri_info_row.OccLimit:
+            profile_id = profile_id + 1
+            add_profiles_args.fmprofiles_list.append(
+                common.get_occlim_profile(
+                    profile_id,
+                    limit=add_profiles_args.ri_info_row.OccLimit,
+            ))
+            add_profiles_args.node_layer_profile_map[
+                (add_profiles_args.program_node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
+
+
+
     def _add_surplus_share_profiles(self, add_profiles_args):
         profile_id = max(
             x.profile_id for x in add_profiles_args.fmprofiles_list)
@@ -433,7 +461,8 @@ class ReinsuranceLayer(object):
         # not explicitly covered are unaffected
         for node in anytree.iterators.LevelOrderIter(add_profiles_args.program_node):
             add_profiles_args.node_layer_profile_map[(
-                node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = add_profiles_args.nolossprofile_id
+                    node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = add_profiles_args.nolossprofile_id
+
         add_profiles_args.node_layer_profile_map[(
             add_profiles_args.program_node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = add_profiles_args.passthroughprofile_id
 
@@ -469,6 +498,19 @@ class ReinsuranceLayer(object):
             else:
                 raise Exception(
                     "Unsupported risk level: {}".format(ri_scope_row.RiskLevel))
+
+        # Check ri_info row for overall OccLimit
+        if add_profiles_args.ri_info_row.OccLimit:
+            profile_id = profile_id + 1
+            add_profiles_args.fmprofiles_list.append(
+                common.get_occlim_profile(
+                    profile_id,
+                    limit=add_profiles_args.ri_info_row.OccLimit,
+            ))
+            add_profiles_args.node_layer_profile_map[
+                (add_profiles_args.program_node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
+
+
 
 
     def _add_quota_share_profiles(self, add_profiles_args):
@@ -547,10 +589,17 @@ class ReinsuranceLayer(object):
 
         node_layer_profile_map = {}
 
+        self.logger.debug(fmprofiles_list)
+
+
         #
         # Step 1 - Build a tree representation of the insurance program, depening on the reinsuarnce risk level.
         #
         program_node  = self._get_tree()
+
+        if self.logger:
+            self.logger.debug('program_node tree: "{}"'.format(self.name))
+            self.logger.debug(anytree.RenderTree(program_node))
 
         #
         # Step 2 - Overlay the reinsurance structure. Each resinsuarnce contact is a seperate layer.
@@ -564,6 +613,12 @@ class ReinsuranceLayer(object):
             scope_rows = self.ri_scope[
                 (self.ri_scope.ReinsNumber == ri_info_row.ReinsNumber) &
                 (self.ri_scope.RiskLevel == self.risk_level)]
+
+            if self.logger:
+                pd.set_option('display.width', 1000)
+                self.logger.debug('ri_scope: "{}"'.format(self.name))
+                self.logger.debug(scope_rows)
+
             if scope_rows.shape[0] == 0:
                 continue
 
@@ -606,7 +661,7 @@ class ReinsuranceLayer(object):
                     profiles_ids = []
 
                     # The `overlay_rule` replaces using each resinsuarnce contact in a seperate layer
-                    # Collect overlaping unique combinations of (layer_id, level_id, agg_id) and combine into 
+                    # Collect overlaping unique combinations of (layer_id, level_id, agg_id) and combine into
                     # a single layer
                     for overlay_rule in range(1,overlay_loop+1):
                         try:
@@ -629,8 +684,6 @@ class ReinsuranceLayer(object):
 
         # Log Reinsurance structures
         if self.logger:
-            self.logger.debug('program_node tree: "{}"'.format(self.name))
-            self.logger.debug(anytree.RenderTree(add_profiles_args.program_node))
             self.logger.debug('policytc_map: "{}"'.format(self.name))
             policytc_map = dict()
             for k in add_profiles_args.node_layer_profile_map.keys():

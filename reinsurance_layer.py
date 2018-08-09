@@ -291,10 +291,6 @@ class ReinsuranceLayer(object):
         return (node_summary == scope_row_summary)
 
     def _does_account_node_match_scope_row(self, node, ri_scope_row):
-        search_dict = {
-            'AccountNumber':  ri_scope_row.AccountNumber,
-        }
-        return self._match_node(node, search_dict)
         node_summary = (node.account_number,
                         common.NOT_SET_ID, common.NOT_SET_ID)
         scope_row_summary = (ri_scope_row.AccountNumber,
@@ -623,6 +619,11 @@ class ReinsuranceLayer(object):
         if self.logger:
             self.logger.debug('program_node tree: "{}"'.format(self.name))
             self.logger.debug(anytree.RenderTree(program_node))
+            #Plot tree to image (graphviz)
+            #from anytree.dotexport import RenderTreeGraph
+            #RenderTreeGraph(program_node).to_picture(
+            #    "{}.png".format(self.name))
+
 
         #
         # Step 2 - Overlay the reinsurance structure. Each resinsuarnce contact is a seperate layer.

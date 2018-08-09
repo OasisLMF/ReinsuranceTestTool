@@ -432,30 +432,11 @@ class ReinsuranceLayer(object):
                 ceded=add_profiles_args.ri_info_row.PlacementPercent
             ))
 
-            if ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_LOCATION:
-                nodes = anytree.search.findall(
-                    add_profiles_args.program_node,
-                    filter_=lambda node: self._match_node(node, {'PolicyNumber': ri_scope_row.PolicyNumber}))
-                for node in nodes:
-                    add_profiles_args.node_layer_profile_map[(
-                        node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
-            elif ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_POLICY:
-                nodes = anytree.search.findall(
-                    add_profiles_args.program_node,
-                    filter_=lambda node: self._does_policy_node_match_scope_row(node, ri_scope_row))
-                for node in nodes:
-                    add_profiles_args.node_layer_profile_map[(
-                        node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
-            elif ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_ACCOUNT:
-                nodes = anytree.search.findall(
-                    add_profiles_args.program_node,
-                    filter_=lambda node: self._does_account_node_match_scope_row(node, ri_scope_row))
-                for node in nodes:
-                    add_profiles_args.node_layer_profile_map[(
-                        node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
-            else:
-                raise Exception(
-                    "Unsupported risk level: {}".format(ri_scope_row.RiskLevel))
+            nodes = anytree.search.findall(
+                add_profiles_args.program_node, filter_=lambda node: node.level_id == 2)
+            for node in nodes:
+                add_profiles_args.node_layer_profile_map[(
+                    node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
 
         # Check ri_info row for overall OccLimit
         if add_profiles_args.ri_info_row.OccLimit:

@@ -367,11 +367,13 @@ class ReinsuranceLayer(object):
         return program_node
 
     def _add_fac_profiles(self, add_profiles_args):
+        self.logger.debug("Adding FAC profiles:")
         profile_id = max(
             x.profile_id for x in add_profiles_args.fmprofiles_list)
 
         # Add pass through nodes at all levels so that the risks
         # not explicitly covered are unaffected
+
         for node in anytree.iterators.LevelOrderIter(add_profiles_args.program_node):
             add_profiles_args.node_layer_profile_map[(
                 node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = add_profiles_args.nolossprofile_id
@@ -382,7 +384,8 @@ class ReinsuranceLayer(object):
         add_profiles_args.fmprofiles_list.append(common.get_reinsurance_profile(
             profile_id,
             attachment=add_profiles_args.ri_info_row.RiskAttachmentPoint,
-            limit=add_profiles_args.ri_info_row.RiskLimit
+            limit=add_profiles_args.ri_info_row.RiskLimit,
+            ceded=add_profiles_args.ri_info_row.CededPercent
         ))
 
         for _, ri_scope_row in add_profiles_args.scope_rows.iterrows():
@@ -413,6 +416,7 @@ class ReinsuranceLayer(object):
 
     # Need to check Matching rules for Per Risk with Joh
     def _add_per_risk_profiles(self, add_profiles_args):
+        self.logger.debug("Adding PR profiles:")
         profile_id = max(
             x.profile_id for x in add_profiles_args.fmprofiles_list)
 
@@ -470,6 +474,7 @@ class ReinsuranceLayer(object):
 
 
     def _add_surplus_share_profiles(self, add_profiles_args):
+        self.logger.debug("Adding SS profiles:")
         profile_id = max(
             x.profile_id for x in add_profiles_args.fmprofiles_list)
 
@@ -530,6 +535,7 @@ class ReinsuranceLayer(object):
 
 
     def _add_quota_share_profiles(self, add_profiles_args):
+        self.logger.debug("Adding QS profiles:")
         profile_id = max(
             x.profile_id for x in add_profiles_args.fmprofiles_list)
 
@@ -567,6 +573,7 @@ class ReinsuranceLayer(object):
             (add_profiles_args.program_node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
 
     def _add_cat_xl_profiles(self, add_profiles_args):
+        self.logger.debug("Adding CAT XL profiles:")
         profile_id = max(
             x.profile_id for x in add_profiles_args.fmprofiles_list)
         profile_id = profile_id + 1

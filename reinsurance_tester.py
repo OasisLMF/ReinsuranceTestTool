@@ -270,12 +270,20 @@ if __name__ == "__main__":
         logger)
 
     for (description, net_loss) in net_losses.items():
+        #Print / Write Output to csv
+        filename = '{}_output.csv'.format(description.replace(' ', '_'))
+        net_loss.to_csv(os.path.join(run_name, filename), index=False)
         print(description)
         print(tabulate(net_loss, headers='keys', tablefmt='psql', floatfmt=".2f"))
+
+        # print / write, output sum by location_number
         if 'loss_net' in net_loss.columns:
             loc_sum_df = net_loss.groupby(['location_number']).sum()
+            filename = '{}_output_locsum.csv'.format(description.replace(' ', '_'))
+            loc_sum_df.to_csv(os.path.join(run_name, filename), index=False)
             print(tabulate(loc_sum_df[['tiv','loss_pre', 'loss_net']], 
                   headers='keys', tablefmt='psql', floatfmt=".2f"))
+
         if args.debug:
             logger.debug(description)
             logger.debug(tabulate(net_loss, headers='keys', tablefmt='psql', floatfmt=".2f"))

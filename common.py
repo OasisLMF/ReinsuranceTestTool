@@ -159,6 +159,7 @@ OED_REINS_INFO_FIELDS = [
 
 OED_REINS_SCOPE_FIELDS = [
     'ReinsNumber',
+    'PortfolioNumber',
     'AccountNumber',
     'PolicyNumber',
     'LocationNumber',

@@ -9,6 +9,7 @@ import shutil
 import os
 import argparse
 import time
+import logging
 from reinsurance_layer import ReinsuranceLayer, validate_reinsurance_structures
 from direct_layer import DirectLayer
 import common
@@ -123,13 +124,14 @@ def run_test(
         run_name,
         account_df, location_df, ri_info_df, ri_scope_df,
         loss_factor,
-        do_reinsurance):
+        do_reinsurance,
+        logger=None):
     """
     Run the direct and reinsurance layers through the Oasis FM.abs
-    Returns an array of net loss data frames, the first for the direct layers 
+    Returns an array of net loss data frames, the first for the direct layers
     and then one per inuring layer.
     """
-    t_start = time.time() 
+    t_start = time.time()
 
 
     if os.path.exists(run_name):
@@ -170,8 +172,12 @@ def run_test(
             previous_inuring_priority = None
             previous_risk_level = None
             for inuring_priority in range(1, ri_info_df['InuringPriority'].max() + 1):
+                # Filter the reinsNumbers by inuring_priority
+                reins_numbers = ri_info_df[ri_info_df['InuringPriority'] == inuring_priority].ReinsNumber.tolist()
+                risk_level_set = set(ri_scope_df[ri_scope_df['ReinsNumber'].isin(reins_numbers)].RiskLevel)
+
                 for risk_level in common.REINS_RISK_LEVELS:
-                    if ri_scope_df[ri_scope_df.RiskLevel == risk_level].empty:
+                    if risk_level not in risk_level_set:
                         continue
                     reinsurance_layer_losses_df = run_inuring_level_risk_level(
                         inuring_priority,
@@ -197,7 +203,40 @@ def run_test(
         os.chdir(cwd)
         t_end = time.time()
         print("Exec time: {}".format(t_end - t_start))
+
+        if logger:
+            print("\n\nItems_to_Locations: mapping")
+            print(tabulate(direct_layer.report_item_ids(),
+                         headers='keys', tablefmt='psql', floatfmt=".2f")) 
+            logger.debug("Items_to_Locations: mapping")
+            logger.debug(tabulate(direct_layer.report_item_ids(),
+                         headers='keys', tablefmt='psql', floatfmt=".2f")) 
     return net_losses
+
+
+
+def setup_logger(log_name):
+    log_file = "run_{}.log".format(time.strftime("%Y%m%d-%H%M%S"))
+    if log_name:
+        log_file = "{}.log".format(log_name)
+
+    log_dir = 'logs'
+    
+
+    log_level = logging.DEBUG
+    #log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    log_format = '%(message)s\n'
+
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+
+    #logging.basicConfig(stream=sys.stdout, level=log_level, format=log_format)
+    logging.basicConfig(level=log_level,
+                        format=log_format,
+                        filename=os.path.join(log_dir, log_file),
+                        filemode='w')
+    return logging.getLogger()
+
 
 
 if __name__ == "__main__":
@@ -214,12 +253,16 @@ if __name__ == "__main__":
     parser.add_argument(
         '-l', '--loss_factor', metavar='N', type=float, default=1.0,
         help='The loss factor to apply to TIVs.')
+    parser.add_argument(
+       '-d', '--debug', action='store', default=None,
+       help='Store Debugging Logs under ./logs')
 
     args = parser.parse_args()
 
     run_name = args.name
     oed_dir = args.oed_dir
     loss_factor = args.loss_factor
+    logger = (setup_logger(args.debug) if args.debug else None)
 
     (account_df, location_df, ri_info_df, ri_scope_df, do_reinsurance) = load_oed_dfs(oed_dir)
 
@@ -227,10 +270,26 @@ if __name__ == "__main__":
         run_name,
         account_df, location_df, ri_info_df, ri_scope_df,
         loss_factor,
-        do_reinsurance)
+        do_reinsurance,
+        logger)
 
     for (description, net_loss) in net_losses.items():
+        #Print / Write Output to csv
+        filename = '{}_output.csv'.format(description.replace(' ', '_'))
+        net_loss.to_csv(os.path.join(run_name, filename), index=False)
         print(description)
         print(tabulate(net_loss, headers='keys', tablefmt='psql', floatfmt=".2f"))
+
+        # print / write, output sum by location_number
+        if 'loss_net' in net_loss.columns:
+            loc_sum_df = net_loss.groupby(['location_number']).sum()
+            filename = '{}_output_locsum.csv'.format(description.replace(' ', '_'))
+            loc_sum_df.to_csv(os.path.join(run_name, filename), index=False)
+            print(tabulate(loc_sum_df[['tiv','loss_pre', 'loss_net']], 
+                  headers='keys', tablefmt='psql', floatfmt=".2f"))
+
+        if args.debug:
+            logger.debug(description)
+            logger.debug(tabulate(net_loss, headers='keys', tablefmt='psql', floatfmt=".2f"))
         print("")
         print("")

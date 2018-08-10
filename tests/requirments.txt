@@ -1,0 +1,4 @@
+parameterized
+pytest
+pandas
+pathlib

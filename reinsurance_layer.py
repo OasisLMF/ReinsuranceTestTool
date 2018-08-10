@@ -1,9 +1,11 @@
 import pandas as pd
 import os
+import logging
 import subprocess
 import anytree
 import shutil
 import common
+import json
 from collections import namedtuple
 
 
@@ -68,7 +70,6 @@ def validate_reinsurance_structures(account_df, location_df, ri_info_df, ri_scop
     inuring_layers = {}
     for inuring_priority in range(1, ri_info_df['InuringPriority'].max() + 1):
         inuring_priority_ri_info_df = ri_info_df[ri_info_df.InuringPriority == inuring_priority]
-        print(inuring_priority_ri_info_df)
         if inuring_priority_ri_info_df.empty:
             continue
 
@@ -179,8 +180,9 @@ class ReinsuranceLayer(object):
     """
 
     def __init__(self, name, ri_info, ri_scope, accounts, locations,
-                 items, coverages, fm_xrefs, xref_descriptions, risk_level):
+                 items, coverages, fm_xrefs, xref_descriptions, risk_level, logger=None):
 
+        self.logger = logger or logging.getLogger()
         self.name = name
         self.accounts = accounts
         self.locations = locations
@@ -203,7 +205,7 @@ class ReinsuranceLayer(object):
 
         self.add_profiles_args = namedtuple(
             "AddProfilesArgs",
-            "program_node, ri_info_row, scope_rows, layer_id, "
+            "program_node, ri_info_row, scope_rows, overlay_loop, layer_id, "
             "node_layer_profile_map, fmprofiles_list, nolossprofile_id, passthroughprofile_id")
 
     def _add_program_node(self, level_id):
@@ -263,18 +265,29 @@ class ReinsuranceLayer(object):
             policy_number=common.NOT_SET_ID,
             location_number=common.NOT_SET_ID)
 
+
+
     def _does_location_node_match_scope_row(self, node, ri_scope_row):
         node_summary = (node.account_number,
                         node.policy_number, node.location_number)
         scope_row_summary = (ri_scope_row.AccountNumber,
                              ri_scope_row.PolicyNumber, ri_scope_row.LocationNumber)
+        if (node_summary == scope_row_summary):
+            self.logger.debug('Matching node: location to scope\n node: {}, ri_scope: {}'.format(
+                str(node_summary),
+                str(scope_row_summary),
+            ))
         return (node_summary == scope_row_summary)
 
     def _does_policy_node_match_scope_row(self, node, ri_scope_row):
         node_summary = (node.account_number,
                         node.policy_number, common.NOT_SET_ID)
-        scope_row_summary = (ri_scope_row.AccountNumber,
-                             ri_scope_row.PolicyNumber, common.NOT_SET_ID)
+        scope_row_summary = (ri_scope_row.AccountNumber, ri_scope_row.PolicyNumber, common.NOT_SET_ID)
+        if (node_summary == scope_row_summary):
+            self.logger.debug('Matching node: policy to scope\n node: {}, ri_scope: {}'.format(
+                str(node_summary),
+                str(scope_row_summary),
+            ))
         return (node_summary == scope_row_summary)
 
     def _does_account_node_match_scope_row(self, node, ri_scope_row):
@@ -282,7 +295,25 @@ class ReinsuranceLayer(object):
                         common.NOT_SET_ID, common.NOT_SET_ID)
         scope_row_summary = (ri_scope_row.AccountNumber,
                              common.NOT_SET_ID, common.NOT_SET_ID)
+        if (node_summary == scope_row_summary):
+            self.logger.debug('Matching node: account to scope\n node: {}, ri_scope: {}'.format(
+                str(node_summary),
+                str(scope_row_summary),
+            ))
         return (node_summary == scope_row_summary)
+
+    # More generic but slower (testing only)
+    def _match_node(self, node, search_dict):
+        node_dict = {
+            'AccountNumber':  node.account_number,
+            'PolicyNumber':   node.policy_number,
+            'LocationNumber': node.location_number,
+        }
+        self.logger.debug('Matching node: \n\t node: {}, \n\t search: {}'.format(
+            str(node_dict),
+            str(search_dict),
+        ))
+        return search_dict.items() <= node_dict.items()
 
     def _get_tree(self):
         current_location_number = 0
@@ -332,22 +363,26 @@ class ReinsuranceLayer(object):
         return program_node
 
     def _add_fac_profiles(self, add_profiles_args):
+        self.logger.debug("Adding FAC profiles:")
         profile_id = max(
             x.profile_id for x in add_profiles_args.fmprofiles_list)
 
         # Add pass through nodes at all levels so that the risks
         # not explicitly covered are unaffected
+
         for node in anytree.iterators.LevelOrderIter(add_profiles_args.program_node):
             add_profiles_args.node_layer_profile_map[(
-                node.name, add_profiles_args.layer_id)] = add_profiles_args.nolossprofile_id
+                node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = add_profiles_args.nolossprofile_id
         add_profiles_args.node_layer_profile_map[(
-            add_profiles_args.program_node.name, add_profiles_args.layer_id)] = add_profiles_args.passthroughprofile_id
+            add_profiles_args.program_node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = add_profiles_args.passthroughprofile_id
 
         profile_id = profile_id + 1
         add_profiles_args.fmprofiles_list.append(common.get_reinsurance_profile(
             profile_id,
             attachment=add_profiles_args.ri_info_row.RiskAttachmentPoint,
-            limit=add_profiles_args.ri_info_row.RiskLimit
+            limit=add_profiles_args.ri_info_row.RiskLimit,
+            ceded=add_profiles_args.ri_info_row.CededPercent,
+            placement=add_profiles_args.ri_info_row.PlacementPercent
         ))
 
         for _, ri_scope_row in add_profiles_args.scope_rows.iterrows():
@@ -357,73 +392,67 @@ class ReinsuranceLayer(object):
                     filter_=lambda node: self._does_location_node_match_scope_row(node, ri_scope_row))
                 for node in nodes:
                     add_profiles_args.node_layer_profile_map[(
-                        node.name, add_profiles_args.layer_id)] = profile_id
+                        node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
             elif ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_POLICY:
                 nodes = anytree.search.findall(
                     add_profiles_args.program_node,
                     filter_=lambda node: self._does_policy_node_match_scope_row(node, ri_scope_row))
                 for node in nodes:
                     add_profiles_args.node_layer_profile_map[(
-                        node.name, add_profiles_args.layer_id)] = profile_id
+                        node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
             elif ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_ACCOUNT:
                 nodes = anytree.search.findall(
                     add_profiles_args.program_node,
                     filter_=lambda node: self._does_account_node_match_scope_row(node, ri_scope_row))
                 for node in nodes:
                     add_profiles_args.node_layer_profile_map[(
-                        node.name, add_profiles_args.layer_id)] = profile_id
+                        node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
             else:
                 raise Exception(
                     "Unsupported risk level: {}".format(ri_scope_row.RiskLevel))
 
+    # Need to check Matching rules for Per Risk with Joh
     def _add_per_risk_profiles(self, add_profiles_args):
+        self.logger.debug("Adding PR profiles:")
         profile_id = max(
             x.profile_id for x in add_profiles_args.fmprofiles_list)
 
-        # Add pass through nodes at all levels so that the risks
         # not explcitly covered are unaffected
         for node in anytree.iterators.LevelOrderIter(add_profiles_args.program_node):
             add_profiles_args.node_layer_profile_map[(
-                node.name, add_profiles_args.layer_id)] = add_profiles_args.nolossprofile_id
+                node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = add_profiles_args.nolossprofile_id
         add_profiles_args.node_layer_profile_map[(
-            add_profiles_args.program_node.name, add_profiles_args.layer_id)] = add_profiles_args.passthroughprofile_id
+            add_profiles_args.program_node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = add_profiles_args.passthroughprofile_id
 
         for _, ri_scope_row in add_profiles_args.scope_rows.iterrows():
-
             profile_id = profile_id + 1
             add_profiles_args.fmprofiles_list.append(common.get_reinsurance_profile(
                 profile_id,
                 attachment=add_profiles_args.ri_info_row.RiskAttachmentPoint,
                 limit=add_profiles_args.ri_info_row.RiskLimit,
-                ceded=ri_scope_row.CededPercent
+                placement=add_profiles_args.ri_info_row.PlacementPercent
             ))
 
-            if ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_LOCATION:
-                nodes = anytree.search.findall(
-                    add_profiles_args.program_node,
-                    filter_=lambda node: self._does_location_node_match_scope_row(node, ri_scope_row))
-                for node in nodes:
-                    add_profiles_args.node_layer_profile_map[(
-                        node.name, add_profiles_args.layer_id)] = profile_id
-            elif ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_POLICY:
-                nodes = anytree.search.findall(
-                    add_profiles_args.program_node,
-                    filter_=lambda node: self._does_policy_node_match_scope_row(node, ri_scope_row))
-                for node in nodes:
-                    add_profiles_args.node_layer_profile_map[(
-                        node.name, add_profiles_args.layer_id)] = profile_id
-            elif ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_ACCOUNT:
-                nodes = anytree.search.findall(
-                    add_profiles_args.program_node,
-                    filter_=lambda node: self._does_account_node_match_scope_row(node, ri_scope_row))
-                for node in nodes:
-                    add_profiles_args.node_layer_profile_map[(
-                        node.name, add_profiles_args.layer_id)] = profile_id
-            else:
-                raise Exception(
-                    "Unsupported risk level: {}".format(ri_scope_row.RiskLevel))
+            nodes = anytree.search.findall(
+                add_profiles_args.program_node, filter_=lambda node: node.level_id == 2)
+            for node in nodes:
+                add_profiles_args.node_layer_profile_map[(
+                    node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
+
+        # Check ri_info row for overall OccLimit
+        if add_profiles_args.ri_info_row.OccLimit:
+            profile_id = profile_id + 1
+            add_profiles_args.fmprofiles_list.append(
+                common.get_occlim_profile(
+                    profile_id,
+                    limit=add_profiles_args.ri_info_row.OccLimit,
+            ))
+            add_profiles_args.node_layer_profile_map[
+                (add_profiles_args.program_node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
+
 
     def _add_surplus_share_profiles(self, add_profiles_args):
+        self.logger.debug("Adding SS profiles:")
         profile_id = max(
             x.profile_id for x in add_profiles_args.fmprofiles_list)
 
@@ -431,9 +460,10 @@ class ReinsuranceLayer(object):
         # not explicitly covered are unaffected
         for node in anytree.iterators.LevelOrderIter(add_profiles_args.program_node):
             add_profiles_args.node_layer_profile_map[(
-                node.name, add_profiles_args.layer_id)] = add_profiles_args.nolossprofile_id
+                    node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = add_profiles_args.nolossprofile_id
+
         add_profiles_args.node_layer_profile_map[(
-            add_profiles_args.program_node.name, add_profiles_args.layer_id)] = add_profiles_args.passthroughprofile_id
+            add_profiles_args.program_node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = add_profiles_args.passthroughprofile_id
 
         for _, ri_scope_row in add_profiles_args.scope_rows.iterrows():
             profile_id = profile_id + 1
@@ -441,7 +471,8 @@ class ReinsuranceLayer(object):
                 profile_id,
                 attachment=add_profiles_args.ri_info_row.RiskAttachmentPoint,
                 limit=add_profiles_args.ri_info_row.RiskLimit,
-                ceded=ri_scope_row.CededPercent
+                ceded=ri_scope_row.CededPercent,
+                placement=add_profiles_args.ri_info_row.PlacementPercent
             ))
             if ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_LOCATION:
                 nodes = anytree.search.findall(
@@ -449,31 +480,44 @@ class ReinsuranceLayer(object):
                     filter_=lambda node: self._does_location_node_match_scope_row(node, ri_scope_row))
                 for node in nodes:
                     add_profiles_args.node_layer_profile_map[(
-                        node.name, add_profiles_args.layer_id)] = profile_id
+                        node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
             elif ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_POLICY:
                 nodes = anytree.search.findall(
                     add_profiles_args.program_node,
                     filter_=lambda node: self._does_policy_node_match_scope_row(node, ri_scope_row))
                 for node in nodes:
                     add_profiles_args.node_layer_profile_map[(
-                        node.name, add_profiles_args.layer_id)] = profile_id
+                        node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
             elif ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_ACCOUNT:
                 nodes = anytree.search.findall(
                     add_profiles_args.program_node,
                     filter_=lambda node: self._does_account_node_match_scope_row(node, ri_scope_row))
                 for node in nodes:
                     add_profiles_args.node_layer_profile_map[(
-                        node.name, add_profiles_args.layer_id)] = profile_id
+                        node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
             else:
                 raise Exception(
                     "Unsupported risk level: {}".format(ri_scope_row.RiskLevel))
 
+        # Check ri_info row for overall OccLimit
+        if add_profiles_args.ri_info_row.OccLimit:
+            profile_id = profile_id + 1
+            add_profiles_args.fmprofiles_list.append(
+                common.get_occlim_profile(
+                    profile_id,
+                    limit=add_profiles_args.ri_info_row.OccLimit,
+            ))
+            add_profiles_args.node_layer_profile_map[
+                (add_profiles_args.program_node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
+
+
+
 
     def _add_quota_share_profiles(self, add_profiles_args):
+        self.logger.debug("Adding QS profiles:")
         profile_id = max(
             x.profile_id for x in add_profiles_args.fmprofiles_list)
 
-        print(add_profiles_args.fmprofiles_list)
         # Add any risk limits
         if self.risk_level == common.REINS_RISK_LEVEL_PORTFOLIO:
             profile_id = profile_id + 1
@@ -481,7 +525,8 @@ class ReinsuranceLayer(object):
                 common.get_reinsurance_profile(
                     profile_id,
                     limit=add_profiles_args.ri_info_row.OccLimit,
-                    ceded=add_profiles_args.ri_info_row.CededPercent
+                    ceded=add_profiles_args.ri_info_row.CededPercent,
+                    placement=add_profiles_args.ri_info_row.PlacementPercent
             ))
         else:
             profile_id = profile_id + 1
@@ -489,13 +534,14 @@ class ReinsuranceLayer(object):
                 common.get_reinsurance_profile(
                     profile_id,
                     limit=add_profiles_args.ri_info_row.RiskLimit,
-                    ceded=add_profiles_args.ri_info_row.CededPercent
+                    ceded=add_profiles_args.ri_info_row.CededPercent,
+                    placement=add_profiles_args.ri_info_row.PlacementPercent
                 ))
             nodes = anytree.search.findall(
                 add_profiles_args.program_node, filter_=lambda node: node.level_id == 2)
             for node in nodes:
                 add_profiles_args.node_layer_profile_map[(
-                    node.name, add_profiles_args.layer_id)] = profile_id
+                    node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
 
             # Add occurrence limit and share
             profile_id = profile_id + 1
@@ -503,11 +549,13 @@ class ReinsuranceLayer(object):
                 common.get_reinsurance_profile(
                     profile_id,
                     limit=add_profiles_args.ri_info_row.OccLimit,
+                    placement=add_profiles_args.ri_info_row.PlacementPercent
             ))
         add_profiles_args.node_layer_profile_map[
-            (add_profiles_args.program_node.name, add_profiles_args.layer_id)] = profile_id
+            (add_profiles_args.program_node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
 
     def _add_cat_xl_profiles(self, add_profiles_args):
+        self.logger.debug("Adding CAT XL profiles:")
         profile_id = max(
             x.profile_id for x in add_profiles_args.fmprofiles_list)
         profile_id = profile_id + 1
@@ -515,10 +563,11 @@ class ReinsuranceLayer(object):
             common.get_reinsurance_profile(
                 profile_id,
                 attachment=add_profiles_args.ri_info_row.OccurenceAttachmentPoint,
-                limit=add_profiles_args.ri_info_row.OccLimit
+                limit=add_profiles_args.ri_info_row.OccLimit,
+                placement=add_profiles_args.ri_info_row.PlacementPercent
             ))
         add_profiles_args.node_layer_profile_map[
-            (add_profiles_args.program_node.name, add_profiles_args.layer_id)] = profile_id
+            (add_profiles_args.program_node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
 
     def generate_oasis_structures(self):
         '''
@@ -546,26 +595,46 @@ class ReinsuranceLayer(object):
 
         node_layer_profile_map = {}
 
+        self.logger.debug(fmprofiles_list)
+
+
         #
         # Step 1 - Build a tree representation of the insurance program, depening on the reinsuarnce risk level.
         #
-        program_node = self._get_tree()
+        program_node  = self._get_tree()
+
+        if self.logger:
+            self.logger.debug('program_node tree: "{}"'.format(self.name))
+            self.logger.debug(anytree.RenderTree(program_node))
+            #Plot tree to image (graphviz)
+            #from anytree.dotexport import RenderTreeGraph
+            #RenderTreeGraph(program_node).to_picture(
+            #    "{}.png".format(self.name))
+
 
         #
         # Step 2 - Overlay the reinsurance structure. Each resinsuarnce contact is a seperate layer.
         #
         layer_id = 0
+        overlay_loop = 0
         for _, ri_info_row in self.ri_info.iterrows():
-            layer_id = layer_id + 1
+            overlay_loop += 1
+            layer_id = ri_info_row.ReinsLayerNumber
 
             scope_rows = self.ri_scope[
                 (self.ri_scope.ReinsNumber == ri_info_row.ReinsNumber) &
                 (self.ri_scope.RiskLevel == self.risk_level)]
+
+            if self.logger:
+                pd.set_option('display.width', 1000)
+                self.logger.debug('ri_scope: "{}"'.format(self.name))
+                self.logger.debug(scope_rows)
+
             if scope_rows.shape[0] == 0:
                 continue
 
             add_profiles_args = self.add_profiles_args(
-                program_node, ri_info_row, scope_rows, layer_id, node_layer_profile_map,
+                program_node, ri_info_row, scope_rows, overlay_loop, layer_id, node_layer_profile_map,
                 fmprofiles_list, nolossprofile_id, passthroughprofile_id)
 
             if ri_info_row.ReinsType == common.REINS_TYPE_FAC:
@@ -582,6 +651,7 @@ class ReinsuranceLayer(object):
                 raise Exception("ReinsType not supported yet: {}".format(
                     ri_info_row.ReinsType))
 
+
         #
         # Step 3 - Iterate over the tree and write out the Oasis structure.
         #
@@ -594,21 +664,47 @@ class ReinsuranceLayer(object):
                         to_agg_id=node.parent.agg_id
                     )
                 )
-        max_layer_id = layer_id
-        for layer_id in range(1, max_layer_id + 1):
+
+        # Note: Pending confirmation from Joh that ReinsLayerNumber is being used correctly
+        for layer in range(1,max(self.ri_info.ReinsLayerNumber.tolist())+1):
             for node in anytree.iterators.LevelOrderIter(program_node):
                 if node.level_id > 1:
+                    profiles_ids = []
+
+                    # The `overlay_rule` replaces using each resinsuarnce contact in a seperate layer
+                    # Collect overlaping unique combinations of (layer_id, level_id, agg_id) and combine into
+                    # a single layer
+                    for overlay_rule in range(1,overlay_loop+1):
+                        try:
+                            profiles_ids.append(
+                                node_layer_profile_map[(node.name, layer, overlay_rule)])
+                        except:
+                            pass
+                            #print("Invalid keys")
                     fm_policytcs_list.append(common.FmPolicyTc(
-                        layer_id=layer_id,
+                        layer_id=layer,
                         level_id=node.level_id - 1,
                         agg_id=node.agg_id,
-                        profile_id=node_layer_profile_map[(
-                            node.name, layer_id)]
+                        profile_id=max(profiles_ids)
                     ))
 
         self.fmprogrammes = pd.DataFrame(fmprogrammes_list)
         self.fmprofiles = pd.DataFrame(fmprofiles_list)
         self.fm_policytcs = pd.DataFrame(fm_policytcs_list)
+
+
+        # Log Reinsurance structures
+        if self.logger:
+            self.logger.debug('policytc_map: "{}"'.format(self.name))
+            policytc_map = dict()
+            for k in add_profiles_args.node_layer_profile_map.keys():
+                profile_id = add_profiles_args.node_layer_profile_map[k]
+                policytc_map["(Name=%s, layer_id=%s, overlay_loop=%s)" % k] = profile_id
+            self.logger.debug(json.dumps(policytc_map, indent=4))
+            self.logger.debug('fm_policytcs: "{}"'.format(self.name))
+            self.logger.debug(self.fm_policytcs)
+            self.logger.debug('fm_profile: "{}"'.format(self.name))
+            self.logger.debug(self.fmprofiles)
 
     def write_oasis_files(self):
         """
@@ -619,7 +715,6 @@ class ReinsuranceLayer(object):
         self.fmprofiles.to_csv("fm_profile.csv", index=False)
         self.fm_policytcs.to_csv("fm_policytc.csv", index=False)
         self.fm_xrefs.to_csv("fm_xref.csv", index=False)
-
 
         directory = self.name
         if os.path.exists(directory):

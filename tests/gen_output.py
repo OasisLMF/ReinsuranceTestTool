@@ -10,45 +10,87 @@ import reinsurance_tester
 import pandas as pd
 
 
-input_dir = os.path.join(top_level_dir, 'examples')
 output_dir = os.path.join(top_level_dir, 'tests', 'expected')
-examples_paths = [os.path.join(input_dir, d) for d in os.listdir(input_dir)]
+
+
+# Simple set of tests 
+input_dir = os.path.join(top_level_dir, 'examples')
+examples_paths    = [os.path.join(input_dir, d) for d in os.listdir(input_dir)]
 examples_list = [d for d in examples_paths if os.path.isdir(d)] 
 
-print(os.listdir(input_dir))
-for case in examples_list:
-    print(case)
-    (
-        account_df, 
-        location_df, 
-        ri_info_df, 
-        ri_scope_df, 
-        do_reinsurance
-    ) = reinsurance_tester.load_oed_dfs(case, show_all=False)
-#    print(account_df)
+# ftest ri cases
+fm_input_dir = os.path.join(top_level_dir, 'examples', 'ftest')
+fm_examples_paths = [os.path.join(fm_input_dir, d) for d in os.listdir(fm_input_dir)]
+fm_examples_list = [d for d in fm_examples_paths if os.path.isdir(d)] 
+
+case_run_list = examples_list + fm_examples_list
+"""
+case_run_list =  [
+    './examples/multiple_FAC',
+    './examples/multiple_QS_1',
+    './examples/multiple_QS_2',
+    './examples/loc_limit_QS',
+    './examples/acc_limit_QS',
+    './examples/simple_CAT_XL',
+    './examples/ftest',
+    './examples/acc_SS',
+    './examples/pol_SS',
+    './examples/pol_limit_QS',
+    './examples/simple_loc_FAC',
+    './examples/volume_simple_QS',
+    './examples/multiple_SS',
+    './examples/multiple_CAT_XL',
+    './examples/simple_acc_FAC',
+    './examples/loc_SS',
+    './examples/simple_pol_FAC',
+    './examples/simple_QS',
+    './examples/ftest/fm3',
+    './examples/ftest/fm10',
+    './examples/ftest/fm12',
+    './examples/ftest/fm27',
+    './examples/ftest/fm11',
+    './examples/ftest/fm37',
+    './examples/ftest/fm24',
+    './examples/ftest/fm23'
+]
+"""
 
 
-    net_losses = reinsurance_tester.run_test(
-        'run_reinsurance', 
-        account_df, 
-        location_df, 
-        ri_info_df, 
-        ri_scope_df, 
-        loss_factor=1.0, 
-        do_reinsurance=do_reinsurance
-    )
+#print(os.listdir(input_dir))
+for case in case_run_list:
+    try:
+        (
+            account_df, 
+            location_df, 
+            ri_info_df, 
+            ri_scope_df, 
+            do_reinsurance
+        ) = reinsurance_tester.load_oed_dfs(case, show_all=False)
 
-    for key in net_losses.keys():
-        file_out = "{}.csv".format(
-            os.path.join(output_dir,
-                         'calc',
-                         case.rsplit('/')[-1],
-                         key
-            )
-        ).replace(' ', '_')
-        print(file_out)    
-        try:
-            os.makedirs(str(Path(file_out).parents[0]))
-        except: 
-            print('Skip dir creation')
-        net_losses[key].to_csv(file_out)
+        net_losses = reinsurance_tester.run_test(
+            'run_reinsurance', 
+            account_df, 
+            location_df, 
+            ri_info_df, 
+            ri_scope_df, 
+            loss_factor=1.0, 
+            do_reinsurance=do_reinsurance
+        )
+
+        for key in net_losses.keys():
+            file_out = "{}.csv".format(
+                os.path.join(output_dir,
+                             'calc',
+                             case.rsplit('/')[-1],
+                             key
+                )
+            ).replace(' ', '_')
+            print(file_out)    
+            try:
+                os.makedirs(str(Path(file_out).parents[0]))
+            except: 
+                print('Skip dir creation')
+            net_losses[key].to_csv(file_out, index=False)
+    except Exception as e:
+        print('Failed to generate case: "{}"'.format(case))
+        print(e)

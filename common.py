@@ -243,7 +243,8 @@ def get_reinsurance_profile(
     profile_id,
     attachment=0,
     limit=0,
-    ceded=1.0
+    ceded=1.0,
+    placement=1.0
     ):
     
     if limit == 0:
@@ -258,7 +259,7 @@ def get_reinsurance_profile(
         attachment=attachment,
         limit=limit,
         share1=ceded,
-        share2=1.0,       # Not used
+        share2=placement, # PlacementPercent
         share3=1.0        # Not used
         )
 

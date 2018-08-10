@@ -381,7 +381,8 @@ class ReinsuranceLayer(object):
             profile_id,
             attachment=add_profiles_args.ri_info_row.RiskAttachmentPoint,
             limit=add_profiles_args.ri_info_row.RiskLimit,
-            ceded=add_profiles_args.ri_info_row.CededPercent
+            ceded=add_profiles_args.ri_info_row.CededPercent,
+            placement=add_profiles_args.ri_info_row.PlacementPercent
         ))
 
         for _, ri_scope_row in add_profiles_args.scope_rows.iterrows():
@@ -429,7 +430,7 @@ class ReinsuranceLayer(object):
                 profile_id,
                 attachment=add_profiles_args.ri_info_row.RiskAttachmentPoint,
                 limit=add_profiles_args.ri_info_row.RiskLimit,
-                ceded=add_profiles_args.ri_info_row.PlacementPercent
+                placement=add_profiles_args.ri_info_row.PlacementPercent
             ))
 
             nodes = anytree.search.findall(
@@ -470,7 +471,8 @@ class ReinsuranceLayer(object):
                 profile_id,
                 attachment=add_profiles_args.ri_info_row.RiskAttachmentPoint,
                 limit=add_profiles_args.ri_info_row.RiskLimit,
-                ceded=ri_scope_row.CededPercent
+                ceded=ri_scope_row.CededPercent,
+                placement=add_profiles_args.ri_info_row.PlacementPercent
             ))
             if ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_LOCATION:
                 nodes = anytree.search.findall(
@@ -523,7 +525,8 @@ class ReinsuranceLayer(object):
                 common.get_reinsurance_profile(
                     profile_id,
                     limit=add_profiles_args.ri_info_row.OccLimit,
-                    ceded=add_profiles_args.ri_info_row.CededPercent
+                    ceded=add_profiles_args.ri_info_row.CededPercent,
+                    placement=add_profiles_args.ri_info_row.PlacementPercent
             ))
         else:
             profile_id = profile_id + 1
@@ -531,7 +534,8 @@ class ReinsuranceLayer(object):
                 common.get_reinsurance_profile(
                     profile_id,
                     limit=add_profiles_args.ri_info_row.RiskLimit,
-                    ceded=add_profiles_args.ri_info_row.CededPercent
+                    ceded=add_profiles_args.ri_info_row.CededPercent,
+                    placement=add_profiles_args.ri_info_row.PlacementPercent
                 ))
             nodes = anytree.search.findall(
                 add_profiles_args.program_node, filter_=lambda node: node.level_id == 2)
@@ -545,6 +549,7 @@ class ReinsuranceLayer(object):
                 common.get_reinsurance_profile(
                     profile_id,
                     limit=add_profiles_args.ri_info_row.OccLimit,
+                    placement=add_profiles_args.ri_info_row.PlacementPercent
             ))
         add_profiles_args.node_layer_profile_map[
             (add_profiles_args.program_node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id
@@ -558,7 +563,8 @@ class ReinsuranceLayer(object):
             common.get_reinsurance_profile(
                 profile_id,
                 attachment=add_profiles_args.ri_info_row.OccurenceAttachmentPoint,
-                limit=add_profiles_args.ri_info_row.OccLimit
+                limit=add_profiles_args.ri_info_row.OccLimit,
+                placement=add_profiles_args.ri_info_row.PlacementPercent
             ))
         add_profiles_args.node_layer_profile_map[
             (add_profiles_args.program_node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id

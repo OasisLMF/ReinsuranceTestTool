@@ -204,10 +204,10 @@ def run_test(
         t_end = time.time()
         print("Exec time: {}".format(t_end - t_start))
 
-        print("\n\nItems_to_Locations: mapping")
-        print(tabulate(direct_layer.report_item_ids(),
-                     headers='keys', tablefmt='psql', floatfmt=".2f")) 
         if logger:
+            print("\n\nItems_to_Locations: mapping")
+            print(tabulate(direct_layer.report_item_ids(),
+                         headers='keys', tablefmt='psql', floatfmt=".2f")) 
             logger.debug("Items_to_Locations: mapping")
             logger.debug(tabulate(direct_layer.report_item_ids(),
                          headers='keys', tablefmt='psql', floatfmt=".2f")) 

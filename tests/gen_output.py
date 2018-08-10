@@ -10,13 +10,54 @@ import reinsurance_tester
 import pandas as pd
 
 
-input_dir = os.path.join(top_level_dir, 'examples')
 output_dir = os.path.join(top_level_dir, 'tests', 'expected')
-examples_paths = [os.path.join(input_dir, d) for d in os.listdir(input_dir)]
+
+
+# Simple set of tests 
+input_dir = os.path.join(top_level_dir, 'examples')
+examples_paths    = [os.path.join(input_dir, d) for d in os.listdir(input_dir)]
 examples_list = [d for d in examples_paths if os.path.isdir(d)] 
 
-print(os.listdir(input_dir))
-for case in examples_list:
+# ftest ri cases
+fm_input_dir = os.path.join(top_level_dir, 'examples', 'ftest')
+fm_examples_paths = [os.path.join(fm_input_dir, d) for d in os.listdir(fm_input_dir)]
+fm_examples_list = [d for d in fm_examples_paths if os.path.isdir(d)] 
+
+case_run_list = examples_list + fm_examples_list
+
+case_run_list =  [
+#    './examples/multiple_FAC',
+    './examples/multiple_QS_1',
+    './examples/multiple_QS_2',
+#    './examples/loc_limit_QS',
+#    './examples/acc_limit_QS',
+    './examples/simple_CAT_XL',
+#    './examples/ftest',
+#    './examples/acc_SS',
+#    './examples/pol_SS',
+#    './examples/pol_limit_QS',
+#    './examples/simple_loc_FAC',
+#    './examples/volume_simple_QS',
+#    './examples/multiple_SS',
+#    './examples/multiple_CAT_XL',
+#    './examples/simple_acc_FAC',
+#    './examples/loc_SS',
+#    './examples/simple_pol_FAC',
+    './examples/simple_QS',
+#    './examples/ftest/fm3',
+#    './examples/ftest/fm10',
+#    './examples/ftest/fm12',
+    './examples/ftest/fm27',
+#    './examples/ftest/fm11',
+#    './examples/ftest/fm37',
+    './examples/ftest/fm24',
+#    './examples/ftest/fm23'
+]
+
+
+
+#print(os.listdir(input_dir))
+for case in case_run_list:
     try:
         (
             account_df, 
@@ -50,5 +91,6 @@ for case in examples_list:
             except: 
                 print('Skip dir creation')
             net_losses[key].to_csv(file_out, index=False)
-    except:
-        print('Case failed')
+    except Exception as e:
+        print('Failed to generate case: "{}"'.format(case))
+        print(e)

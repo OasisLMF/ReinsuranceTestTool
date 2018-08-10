@@ -19,10 +19,10 @@ sys.path.insert(0, top_level_dir)
 import reinsurance_tester
 
 
-input_dir = os.path.join(top_level_dir, 'examples')
 expected_output_dir = os.path.join(top_level_dir, 'tests', 'expected', 'calc')
 
 
+input_dir = os.path.join(top_level_dir, 'examples')
 #test_examples = [d for d in os.listdir(input_dir) if os.path.isdir(os.path.join(input_dir, d))]
 test_examples = ['multiple_FAC',
                  'multiple_QS_1',
@@ -43,6 +43,12 @@ test_examples = ['multiple_FAC',
                  'simple_pol_FAC',
                  'simple_QS']
 
+fm_input_dir = os.path.join(top_level_dir, 'examples', 'ftest')
+#fm_examples = [d for d in os.listdir(fm_input_dir) if os.path.isdir(os.path.join(fm_input_dir, d))]
+fm_examples = ['fm24',
+               'fm27']
+
+
 test_cases = []
 for case in test_examples:
     test_cases.append((
@@ -50,6 +56,15 @@ for case in test_examples:
         os.path.join(input_dir, case),
         os.path.join(expected_output_dir, case)
     ))
+for case in fm_examples:
+    test_cases.append((
+        case, 
+        os.path.join(fm_input_dir, case),
+        os.path.join(expected_output_dir, case)
+    ))
+
+
+
 
 
 class test_reinsurance_values(unittest.TestCase):

@@ -62,6 +62,7 @@ def load_oed_dfs(oed_dir, show_all=False):
             if do_reinsurance:
                 ri_info_df = ri_info_df[common.OED_REINS_INFO_FIELDS].copy()
                 ri_scope_df = ri_scope_df[common.OED_REINS_SCOPE_FIELDS].copy()
+                ri_info_df['PlacementPercent'] = ri_info_df['PlacementPercent'].astype(float)
     return (account_df, location_df, ri_info_df, ri_scope_df, do_reinsurance)
 
 

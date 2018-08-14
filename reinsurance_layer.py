@@ -674,11 +674,14 @@ class ReinsuranceLayer(object):
                     # The `overlay_rule` replaces using each resinsuarnce contact in a seperate layer
                     # Collect overlaping unique combinations of (layer_id, level_id, agg_id) and combine into
                     # a single layer
+                    #
+                    # TODO -> Detect profile rule clash and ++ layer_id
                     for overlay_rule in range(1,overlay_loop+1):
                         try:
                             profiles_ids.append(
                                 node_layer_profile_map[(node.name, layer, overlay_rule)])
                         except:
+                            profiles_ids.append(1)
                             pass
                             #print("Invalid keys")
                     fm_policytcs_list.append(common.FmPolicyTc(
@@ -691,7 +694,8 @@ class ReinsuranceLayer(object):
         self.fmprogrammes = pd.DataFrame(fmprogrammes_list)
         self.fmprofiles = pd.DataFrame(fmprofiles_list)
         self.fm_policytcs = pd.DataFrame(fm_policytcs_list)
-
+        # Ammend fm_xrefs to be the max(layer_id) used
+        self.fm_xrefs['layer_id'] = pd.Series(layer_id, range(len(self.fm_xrefs.index)))
 
         # Log Reinsurance structures
         if self.logger:

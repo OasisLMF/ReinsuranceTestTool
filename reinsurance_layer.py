@@ -458,7 +458,6 @@ class ReinsuranceLayer(object):
                 attachment=add_profiles_args.ri_info_row.RiskAttachmentPoint,
                 limit=add_profiles_args.ri_info_row.RiskLimit,
                 ceded=ri_scope_row.CededPercent,
-                placement=add_profiles_args.ri_info_row.PlacementPercent
             ))
             
             if ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_LOCATION:

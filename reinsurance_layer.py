@@ -654,15 +654,22 @@ class ReinsuranceLayer(object):
         #
         # Step 2 - Overlay the reinsurance structure. Each resinsuarnce contact is a seperate layer.
         #
-        layer_id = 0
-        overlay_loop = 0
+        layer_id = 0        # Current layer ID
+        overlay_loop = 0    # Overlays multiple rules in same layer
+        prev_reins_number = 0
         for _, ri_info_row in self.ri_info.iterrows():
             overlay_loop += 1
-            layer_id = ri_info_row.ReinsLayerNumber
-
             scope_rows = self.ri_scope[
                 (self.ri_scope.ReinsNumber == ri_info_row.ReinsNumber) &
                 (self.ri_scope.RiskLevel == self.risk_level)]
+           
+            # Only keep the same ove
+            if prev_reins_number < ri_info_row.ReinsNumber:
+                layer_id += 1
+                prev_reins_number = ri_info_row.ReinsNumber
+            if layer_id < ri_info_row.ReinsLayerNumber:
+                layer_id = ri_info_row.ReinsLayerNumber
+
 
             if self.logger:
                 pd.set_option('display.width', 1000)
@@ -714,7 +721,7 @@ class ReinsuranceLayer(object):
                 )
 
         # Note: Pending confirmation from Joh that ReinsLayerNumber is being used correctly
-        for layer in range(1,max(self.ri_info.ReinsLayerNumber.tolist())+1):
+        for layer in range(1,layer_id+1):
             for node in anytree.iterators.LevelOrderIter(program_node):
                 if node.level_id > 1:
                     profiles_ids = []
@@ -728,6 +735,7 @@ class ReinsuranceLayer(object):
                         try:
                             profiles_ids.append(
                                 node_layer_profile_map[(node.name, layer, overlay_rule)])
+                                
                         except:
                             profiles_ids.append(1)
                             pass
@@ -737,11 +745,9 @@ class ReinsuranceLayer(object):
                         agg_id=node.agg_id,
                         profile_id=max(profiles_ids)
                     ))
-
         self.fmprogrammes = pd.DataFrame(fmprogrammes_list)
         self.fmprofiles = pd.DataFrame(fmprofiles_list)
         self.fm_policytcs = pd.DataFrame(fm_policytcs_list)
-        # Ammend fm_xrefs to be the max(layer_id) used
         self.fm_xrefs['layer_id'] = pd.Series(layer_id, range(len(self.fm_xrefs.index)))
 
         # Log Reinsurance structures

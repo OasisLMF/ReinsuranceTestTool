@@ -87,6 +87,9 @@ CONVERSION_TOOLS = {
     'gulsummaryxref': '../ktools/gulsummaryxreftobin',
     'items': "../ktools/itemtobin"}
 
+
+
+
 NOT_SET_ID = -1
 LARGE_VALUE = 9999999999999
 
@@ -268,7 +271,8 @@ def get_occlim_profile(
     profile_id,
     attachment=0,
     limit=0,
-    ceded=1.0
+    ceded=1.0,
+    placement=1.0
     ):
     
     if limit == 0:
@@ -282,9 +286,9 @@ def get_occlim_profile(
         deductible3=0,  # Not used
         attachment=attachment,
         limit=limit,
-        share1=0,       # Not used
-        share2=1.0,     # Not used
-        share3=1.0      # Not used
+        share1=0,         # Not used
+        share2=placement, # Not used
+        share3=1.0        # Not used
         )
 
 def run_fm(
@@ -296,6 +300,7 @@ def run_fm(
         "../ktools/fmcalc -p {0} -n -a {2} < {1}.bin | tee {0}.bin | ../ktools/fmtocsv > {0}.csv".format(
             output_name, input_name, allocation)
     proc = subprocess.Popen(command, shell=True)
+    print(command)
     proc.wait()
     if proc.returncode != 0:
         raise Exception("Failed to run fm")

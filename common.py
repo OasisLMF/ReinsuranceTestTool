@@ -300,7 +300,7 @@ def run_fm(
         "../ktools/fmcalc -p {0} -n -a {2} < {1}.bin | tee {0}.bin | ../ktools/fmtocsv > {0}.csv".format(
             output_name, input_name, allocation)
     proc = subprocess.Popen(command, shell=True)
-    print(command)
+    #print(command)
     proc.wait()
     if proc.returncode != 0:
         raise Exception("Failed to run fm")

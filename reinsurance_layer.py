@@ -573,11 +573,10 @@ class ReinsuranceLayer(object):
                 profile_id = profile_id + 1
 
                 add_profiles_args.fmprofiles_list.append(
-                    common.get_reinsurance_profile(
+                    common.get_pass_through_profile(
                         profile_id,
-                        limit=add_profiles_args.ri_info_row.RiskLimit,
-                        ceded=add_profiles_args.ri_info_row.CededPercent,
-                 ))
+                    )
+                )
 
                 # Filter 
                 if (ri_scope_row.RiskLevel == common.REINS_RISK_LEVEL_ACCOUNT) and self._is_defined(ri_scope_row.AccountNumber):
@@ -596,8 +595,10 @@ class ReinsuranceLayer(object):
             # add OccLimit / Placed Percent
             profile_id = profile_id + 1
             add_profiles_args.fmprofiles_list.append(
-                common.get_occlim_profile(
+                common.get_reinsurance_profile(
                     profile_id,
+                    attachment=add_profiles_args.ri_info_row.OccurenceAttachmentPoint,
+                    ceded=add_profiles_args.ri_info_row.CededPercent,
                     limit=add_profiles_args.ri_info_row.OccLimit,
                     placement=add_profiles_args.ri_info_row.PlacementPercent,
             ))

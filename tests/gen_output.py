@@ -23,7 +23,8 @@ fm_input_dir = os.path.join(top_level_dir, 'examples', 'ftest')
 fm_examples_paths = [os.path.join(fm_input_dir, d) for d in os.listdir(fm_input_dir)]
 fm_examples_list = [d for d in fm_examples_paths if os.path.isdir(d)]
 
-case_run_list = examples_list + fm_examples_list
+#case_run_list = examples_list + fm_examples_list
+case_run_list = examples_list
 """
 case_run_list =  [
     './examples/multiple_FAC',
@@ -64,6 +65,7 @@ for case in case_run_list:
         os.makedirs(output_location)
 
         try:
+            print('[RUNNING]  "{}"'.format(case))
             (
                 account_df,
                 location_df,

@@ -117,7 +117,7 @@ def validate_reinsurance_structures(account_df, location_df, ri_info_df, ri_scop
             is_valid = False
             validation_messages.append(
                 " per risk cannot be combined with other reinsurance types")
-            ontinue
+            continue
         if has_cat_xl and (has_fac or has_quota_share or has_surplus_share or has_per_risk or has_agg_xl):
             is_valid = False
             validation_messages.append(

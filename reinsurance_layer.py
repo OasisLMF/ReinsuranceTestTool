@@ -117,7 +117,7 @@ def validate_reinsurance_structures(account_df, location_df, ri_info_df, ri_scop
             is_valid = False
             validation_messages.append(
                 " per risk cannot be combined with other reinsurance types")
-            continue
+            ontinue
         if has_cat_xl and (has_fac or has_quota_share or has_surplus_share or has_per_risk or has_agg_xl):
             is_valid = False
             validation_messages.append(
@@ -560,7 +560,8 @@ class ReinsuranceLayer(object):
                     profile_id,
                     attachment=add_profiles_args.ri_info_row.OccurenceAttachmentPoint,
                     limit=add_profiles_args.ri_info_row.OccLimit,
-                    placement=add_profiles_args.ri_info_row.PlacementPercent
+                    placement=add_profiles_args.ri_info_row.PlacementPercent,
+                    ceded=add_profiles_args.ri_info_row.CededPercent,
                 ))
             add_profiles_args.node_layer_profile_map[
                 (add_profiles_args.program_node.name, add_profiles_args.layer_id, add_profiles_args.overlay_loop)] = profile_id

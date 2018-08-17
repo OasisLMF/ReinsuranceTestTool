@@ -24,24 +24,32 @@ expected_output_dir = os.path.join(top_level_dir, 'tests', 'expected', 'calc')
 
 input_dir = os.path.join(top_level_dir, 'examples')
 #test_examples = [d for d in os.listdir(input_dir) if os.path.isdir(os.path.join(input_dir, d))]
-test_examples = ['multiple_FAC',
-                 'multiple_QS_1',
-                 'loc_limit_QS',
+test_examples = ['loc_SS',
+                 'acc_SS',
+                 'placed_acc_1_limit_QS',
+                 'placed_acc_limit_QS',
+                 'placed_loc_SS',
                  'acc_limit_QS',
                  'simple_CAT_XL',
-                 #'ftest',
-                 'acc_SS',
-                 'pol_SS',
                  'pol_limit_QS',
-                 'simple_loc_FAC',
-                 'multiple_QS_2',
-                 #'volume_simple_QS',
-                 'multiple_SS',
-                 'multiple_CAT_XL',
-                 'simple_acc_FAC',
-                 'loc_SS',
                  'simple_pol_FAC',
-                 'simple_QS']
+                 'placed_acc_QS',
+                 'acc_1_CAT_XL',
+                 #'volume_simple_QS',
+                 'placed_acc_1_QS',
+                 'loc_limit_QS',
+                 'multiple_SS',
+                 'placed_loc_limit_SS',
+                 'multiple_CAT_XL',
+                 'multiple_portfolio',
+                 'pol_SS',
+                 'multiple_QS_2',
+                 'multiple_FAC',
+                 'simple_acc_FAC',
+                 'simple_QS',
+                 'multiple_QS_1',
+                 'simple_loc_FAC']
+
 
 fm_input_dir = os.path.join(top_level_dir, 'examples', 'ftest')
 #fm_examples = [d for d in os.listdir(fm_input_dir) if os.path.isdir(os.path.join(fm_input_dir, d))]

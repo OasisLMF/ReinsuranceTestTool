@@ -214,7 +214,7 @@ class DirectLayer(object):
         net_flag = ""
         if net:
             net_flag = "-n"
-        command = "../ktools/gultobin -S 1 < guls.csv | ../ktools/fmcalc -p direct {} -a {} | tee ils.bin | ../ktools/fmtocsv > ils.csv".format(
+        command = "gultobin -S 1 < guls.csv | fmcalc -p direct {} -a {} | tee ils.bin | fmtocsv > ils.csv".format(
             net_flag, oed.ALLOCATE_TO_ITEMS_BY_PREVIOUS_LEVEL_ALLOC_ID)
         proc = subprocess.Popen(command, shell=True)
         proc.wait()

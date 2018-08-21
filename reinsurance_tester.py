@@ -130,16 +130,10 @@ def run_test(
             {'inuring_priority': 3, 'risk_level': 'LOC', 'directory': 'run/RI_4'}
 
             '''
-            if previous_inuring_priority is None and previous_risk_level is None:                                                                                                                
+            if idx < 2:                                                                                                                
                 input_name = "ils"
             else:
-                input_name = "ri_{}_{}".format(ri_layers[idx-1]['inuring_priority'], 
-                                                ri_layers[idx-1]['risk_level'])
-                #input_name = "{}_BIN".format(ri_layers[idx-1]['directory'])
-                #input_name = "ri_{}_{}".format(previous_inuring_priority, previous_risk_level)
-
-
-
+                input_name = ri_layers[idx-1]['directory']
             bin.create_binary_files(ri_layers[idx]['directory'],
                                     ri_layers[idx]['directory'], 
                                     do_il=True)
@@ -147,15 +141,10 @@ def run_test(
             reinsurance_layer_losses_df = run_fm(input_name, 
                                                  ri_layers[idx]['directory'], 
                                                  direct_layer.xref_descriptions)
-
-            if reinsurance_layer_losses_df is not None:
-                output_name = "Inuring_priority:{} - Risk_level:{}".format(ri_layers[idx]['inuring_priority'], 
-                                                ri_layers[idx]['risk_level'])
-                net_losses[output_name] = reinsurance_layer_losses_df
+            output_name = "Inuring_priority:{} - Risk_level:{}".format(ri_layers[idx]['inuring_priority'], 
+                                            ri_layers[idx]['risk_level'])
+            net_losses[output_name] = reinsurance_layer_losses_df
         return net_losses
-
-
-
 
     finally:
         os.chdir(cwd)

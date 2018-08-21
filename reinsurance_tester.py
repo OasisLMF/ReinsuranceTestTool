@@ -147,7 +147,7 @@ def run_test(
             reinsurance_layer_losses_df = run_fm(input_name, 
                                                  ri_layers[idx]['directory'], 
                                                  direct_layer.xref_descriptions)
-            net_losses = dict()
+
             if reinsurance_layer_losses_df is not None:
                 output_name = "Inuring_priority:{} - Risk_level:{}".format(ri_layers[idx]['inuring_priority'], 
                                                 ri_layers[idx]['risk_level'])

@@ -2,7 +2,7 @@ import pandas as pd
 import os
 import subprocess
 import shutil
-import common
+from oasislmf.exposures import oed
 
 
 class DirectLayer(object):
@@ -31,10 +31,10 @@ class DirectLayer(object):
 
     def _get_location_tiv(self, location, coverage_type_id):
         switcher = {
-            common.BUILDING_COVERAGE_TYPE_ID: location.BuildingTIV,
-            common.OTHER_BUILDING_COVERAGE_TYPE_ID: location.OtherTIV,
-            common.CONTENTS_COVERAGE_TYPE_ID: location.ContentsTIV,
-            common.TIME_COVERAGE_TYPE_ID: location.BITIV
+            oed.BUILDING_COVERAGE_TYPE_ID: location.BuildingTIV,
+            oed.OTHER_BUILDING_COVERAGE_TYPE_ID: location.OtherTIV,
+            oed.CONTENTS_COVERAGE_TYPE_ID: location.ContentsTIV,
+            oed.TIME_COVERAGE_TYPE_ID: location.BITIV
         }
         return switcher.get(coverage_type_id, 0)
 
@@ -59,11 +59,11 @@ class DirectLayer(object):
             policy_agg_id = policy_agg_id + 1
             profile_id = profile_id + 1
             fmprofiles_list.append(
-                common.get_profile(
+                oed.get_profile(
                     profile_id,
                     deductible=policy.Ded6,
                     limit=policy.Limit6))
-            fm_policytcs_list.append(common.FmPolicyTc(
+            fm_policytcs_list.append(oed.FmPolicyTc(
                 layer_id=1,
                 level_id=2,
                 agg_id=policy_agg_id,
@@ -75,41 +75,41 @@ class DirectLayer(object):
                 profile_id = profile_id + 1
 
                 fmprofiles_list.append(
-                    common.get_profile(
+                    oed.get_profile(
                         profile_id=profile_id,
                         deductible=location.Ded6,
                         limit=location.Limit6))
-                fm_policytcs_list.append(common.FmPolicyTc(
+                fm_policytcs_list.append(oed.FmPolicyTc(
                     layer_id=1,
                     level_id=1,
                     agg_id=site_agg_id,
                     profile_id=profile_id
                 ))
                 fmprogrammes_list.append(
-                    common.FmProgramme(
+                    oed.FmProgramme(
                         from_agg_id=site_agg_id,
                         level_id=2,
                         to_agg_id=policy_agg_id
                     )
                 )
 
-                for coverage_type_id in common.COVERAGE_TYPES:
+                for coverage_type_id in oed.COVERAGE_TYPES:
                     tiv = self._get_location_tiv(location, coverage_type_id)
                     if tiv > 0:
                         coverage_id = coverage_id + 1
                         self.item_id_dict[coverage_id] = location
 
                         coverages_list.append(
-                            common.Coverage(
+                            oed.Coverage(
                                 coverage_id=coverage_id,
                                 tiv=tiv,
                             ))
-                        for peril in common.PERILS:
+                        for peril in oed.PERILS:
                             item_id = item_id + 1
                             self.item_ids.append(item_id)
                             self.item_tivs.append(tiv)
                             items_list.append(
-                                common.Item(
+                                oed.Item(
                                     item_id=item_id,
                                     coverage_id=coverage_id,
                                     areaperil_id=-1,
@@ -117,20 +117,20 @@ class DirectLayer(object):
                                     group_id=group_id
                                 ))
                             fmprogrammes_list.append(
-                                common.FmProgramme(
+                                oed.FmProgramme(
                                     from_agg_id=item_id,
                                     level_id=1,
                                     to_agg_id=site_agg_id
                                 )
                             )
                             fm_xrefs_list.append(
-                                common.FmXref(
+                                oed.FmXref(
                                     output_id=item_id,
                                     agg_id=item_id,
                                     layer_id=1
                                 ))
                             xref_descriptions_list.append(
-                                common.XrefDescription(
+                                oed.XrefDescription(
                                     xref_id=item_id,
                                     account_number=location.AccountNumber,
                                     location_number=location.LocationNumber,
@@ -149,8 +149,8 @@ class DirectLayer(object):
         self.fm_xrefs = pd.DataFrame(fm_xrefs_list)
         self.xref_descriptions = pd.DataFrame(xref_descriptions_list)
 
-    def write_oasis_files(self):
 
+    def write_oasis_files(self, directory=None):
         self.coverages.to_csv("coverages.csv", index=False)
         self.items.to_csv("items.csv", index=False)
         self.fmprogrammes.to_csv("fm_programme.csv", index=False)
@@ -158,14 +158,19 @@ class DirectLayer(object):
         self.fm_policytcs.to_csv("fm_policytc.csv", index=False)
         self.fm_xrefs.to_csv("fm_xref.csv", index=False)
 
-        directory = "direct"
+        if directory is None:
+            directory = "direct"
+        else:
+            directory = os.path.join(directory, "direct")
+
         if os.path.exists(directory):
             shutil.rmtree(directory)
-        os.mkdir(directory)
-        input_files = common.GUL_INPUTS_FILES + common.IL_INPUTS_FILES
+        os.makedirs(directory)
+
+        input_files = oed.GUL_INPUTS_FILES + oed.IL_INPUTS_FILES
 
         for input_file in input_files:
-            conversion_tool = common.CONVERSION_TOOLS[input_file]
+            conversion_tool = oed.CONVERSION_TOOLS[input_file]
             input_file_path = input_file + ".csv"
             if not os.path.exists(input_file_path):
                 continue
@@ -199,18 +204,18 @@ class DirectLayer(object):
         for item_id, tiv in zip(self.item_ids, self.item_tivs):
             event_loss = loss_percentage_of_tiv * tiv
             guls_list.append(
-                common.GulRecord(event_id=1, item_id=item_id, sidx=-1, loss=event_loss))
+                oed.GulRecord(event_id=1, item_id=item_id, sidx=-1, loss=event_loss))
             guls_list.append(
-                common.GulRecord(event_id=1, item_id=item_id, sidx=-2, loss=0))
+                oed.GulRecord(event_id=1, item_id=item_id, sidx=-2, loss=0))
             guls_list.append(
-                common.GulRecord(event_id=1, item_id=item_id, sidx=1, loss=event_loss))
+                oed.GulRecord(event_id=1, item_id=item_id, sidx=1, loss=event_loss))
         guls_df = pd.DataFrame(guls_list)
         guls_df.to_csv("guls.csv", index=False)
         net_flag = ""
         if net:
             net_flag = "-n"
-        command = "../ktools/gultobin -S 1 < guls.csv | ../ktools/fmcalc -p direct {} -a {} | tee ils.bin | ../ktools/fmtocsv > ils.csv".format(
-            net_flag, common.ALLOCATE_TO_ITEMS_BY_PREVIOUS_LEVEL_ALLOC_ID)
+        command = "gultobin -S 1 < guls.csv | fmcalc -p direct {} -a {} | tee ils.bin | fmtocsv > ils.csv".format(
+            net_flag, oed.ALLOCATE_TO_ITEMS_BY_PREVIOUS_LEVEL_ALLOC_ID)
         proc = subprocess.Popen(command, shell=True)
         proc.wait()
         if proc.returncode != 0:

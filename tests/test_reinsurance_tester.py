@@ -13,6 +13,7 @@ import pandas as pd
 import os 
 import sys
 from pathlib import Path
+from oasislmf.exposures import oed
 
 top_level_dir = str(Path(__file__).parents[1])
 sys.path.insert(0, top_level_dir)
@@ -85,7 +86,7 @@ class test_reinsurance_values(unittest.TestCase):
             ri_info_df, 
             ri_scope_df, 
             do_reinsurance
-        ) = reinsurance_tester.load_oed_dfs(case_dir)
+        ) = oed.load_oed_dfs(case_dir)
 
         net_losses = reinsurance_tester.run_test(
             "ri_testing",

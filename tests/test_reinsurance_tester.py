@@ -49,6 +49,10 @@ test_examples = ['loc_SS',
                  'simple_acc_FAC',
                  'simple_QS',
                  'multiple_QS_1',
+                 'acc_PR',
+                 'loc_1_2_PR',
+                 'loc_PR',
+                 'pol_PR',
                  'simple_loc_FAC']
 
 

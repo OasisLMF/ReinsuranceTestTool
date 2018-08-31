@@ -15,6 +15,17 @@ from oasislmf.exposures import oed
 output_dir = os.path.join(top_level_dir, 'tests', 'expected')
 
 
+class term_colour:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
 # Simple set of tests
 input_dir = os.path.join(top_level_dir, 'examples')
 examples_paths    = [os.path.join(input_dir, d) for d in os.listdir(input_dir)]
@@ -90,9 +101,9 @@ for case in case_run_list:
                 #print(file_out)
                 net_losses[key].to_csv(file_out, index=False)
                 
-            print('[SUCCESS]  "{}"'.format(case))
+            print(term_colour.OKGREEN + '[SUCCESS]  "{}"'.format(case) + term_colour.ENDC)
         except Exception as e:
-            print('[FAILED]   "{} - {}"'.format(case,e))
+            print(term_colour.FAIL + '[FAILED]   "{} - {}"'.format(case,e) + term_colour.ENDC)
 
     except FileExistsError as e:
-        print('[SKIPPED]  "{}" dir exisits'.format(case, output_location))
+        print(term_colour.WARNING + '[SKIPPED]  "{}" dir exisits'.format(case, output_location) + term_colour.ENDC)

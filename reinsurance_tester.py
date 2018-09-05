@@ -93,20 +93,14 @@ def run_test(
             loss_percentage_of_tiv=loss_factor, net=False)
         net_losses['Direct'] = losses_df
 
-        ## ADD validator call here
-#        if do_reinsurance:
-#            (is_valid, reisurance_layers) = validate_reinsurance_structures(
-#                account_df, location_df, ri_info_df, ri_scope_df)
-#            if not is_valid:
-#                print("Reinsuarnce structure not valid")
-#                for reinsurance_layer in reisurance_layers:
-#                    if not reinsurance_layer.is_valid:
-#                        print("Inuring layer {} invalid:".format(
-#                            reinsurance_layer.inuring_priority))
-#                        for validation_message in reinsurance_layer.validation_messages:
-#                            print("\t{}".format(validation_message))
-#                        exit(0)
 
+        oed_validator = oed.OedValidator()
+        if  do_reinsurance:
+            (is_valid, error_msgs) = oed_validator.validate(
+                account_df, location_df, ri_info_df, ri_scope_df)
+            if not is_valid:
+                print(error_msgs)
+                exit(1)
 
         ri_layers = reinsurance_layer.generate_files_for_reinsurance(
 			account_df=account_df,

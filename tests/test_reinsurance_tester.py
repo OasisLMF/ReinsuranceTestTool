@@ -106,7 +106,9 @@ class test_reinsurance_values(unittest.TestCase):
             )    
 
             expected_df = pd.read_csv(expected_file)
-            assert_frame_equal(net_losses[key],
+            #found_df  = net_losses[key].drop(['portfolio_number'], axis=1)
+            found_df = net_losses[key]
+            assert_frame_equal(found_df,
                                expected_df)
 
 

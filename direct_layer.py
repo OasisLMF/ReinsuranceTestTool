@@ -137,6 +137,7 @@ class DirectLayer(object):
                                     coverage_type_id=coverage_type_id,
                                     peril_id=peril,
                                     policy_number=policy.PolicyNumber,
+                                    portfolio_number=policy.PortfolioNumber,
                                     tiv=tiv
                                 )
                             )

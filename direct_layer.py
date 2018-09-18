@@ -61,15 +61,15 @@ class DirectLayer(object):
             fmprofiles_list.append(
                 oed.get_profile(
                     profile_id,
-                    deductible=policy.Ded6,
-                    limit=policy.Limit6))
+                    deductible=policy.AccDed6All,
+                    limit=policy.AccLimit6All))
             fm_policytcs_list.append(oed.FmPolicyTc(
                 layer_id=1,
                 level_id=2,
                 agg_id=policy_agg_id,
                 profile_id=profile_id
             ))
-            for location_index, location in self.locations.loc[self.locations["AccountNumber"] == policy.AccountNumber].iterrows():
+            for location_index, location in self.locations.loc[self.locations["AccNumber"] == policy.AccNumber].iterrows():
                 group_id = group_id + 1
                 site_agg_id = site_agg_id + 1
                 profile_id = profile_id + 1
@@ -77,8 +77,8 @@ class DirectLayer(object):
                 fmprofiles_list.append(
                     oed.get_profile(
                         profile_id=profile_id,
-                        deductible=location.Ded6,
-                        limit=location.Limit6))
+                        deductible=location.LocDed6All,
+                        limit=location.LocLimit6All))
                 fm_policytcs_list.append(oed.FmPolicyTc(
                     layer_id=1,
                     level_id=1,
@@ -132,12 +132,12 @@ class DirectLayer(object):
                             xref_descriptions_list.append(
                                 oed.XrefDescription(
                                     xref_id=item_id,
-                                    account_number=location.AccountNumber,
-                                    location_number=location.LocationNumber,
+                                    account_number=location.AccNumber,
+                                    location_number=location.LocNumber,
                                     coverage_type_id=coverage_type_id,
                                     peril_id=peril,
-                                    policy_number=policy.PolicyNumber,
-                                    portfolio_number=policy.PortfolioNumber,
+                                    policy_number=policy.PolNumber,
+                                    #portfolio_number=policy.PortNumber,
                                     tiv=tiv
                                 )
                             )
@@ -190,12 +190,12 @@ class DirectLayer(object):
         """
         return a dataframe showing the relationship between item_id's and Locations
         """
-        locations_list  = [self.item_id_dict[ID].LocationNumber for ID in self.item_ids] 
+        locations_list  = [self.item_id_dict[ID].LocNumber for ID in self.item_ids] 
         from_agg_ids = self.fmprogrammes[self.fmprogrammes['level_id'] == 1].from_agg_id.tolist()
         item_map_df = pd.concat([
             self.items[['item_id','coverage_id']],
             self.coverages['tiv'],
-            pd.DataFrame({'LocationNumber': locations_list})
+            pd.DataFrame({'LocNumber': locations_list})
         ],axis=1)  
         # filter 'item_id' that exisit in 'from_agg_id'
         return item_map_df[item_map_df['item_id'].isin(from_agg_ids)]

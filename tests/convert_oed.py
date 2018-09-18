@@ -49,8 +49,17 @@ def writre_new_oed(oed_file, in_df, write_dir_path):
     #init_data = pd.np.empty((rows, cols,)) * pd.np.nan
     out_df = pd.DataFrame(init_data, columns=oed_cols)
 
-    for key in list(oed_map.keys()):
-        out_df[oed_map[key]] = in_df[key]
+#    for key in list(oed_map.keys()):
+    for key in in_df.columns.tolist():
+        # Columnn name unchanged
+        if key in oed_cols:
+            out_df[key] = in_df[key]
+        # Rename column
+        elif key in list(oed_map.keys()):
+            out_df[oed_map[key]] = in_df[key]
+        else:
+            print('Failed to find map for: file="{}", column="{}"'.format(oed_file,key))
+            #return None
 
     out_df = out_df[oed_cols] # Reorder columns
     out_df.to_csv(
@@ -69,7 +78,7 @@ def run_oed_update(source_dir, destination_dir):
         
         if os.path.isdir(write_base_dir):
             print('Dir exisits - Abort')
-            exit(1)
+            continue
         else:
             os.makedirs(write_base_dir)
             for oed_file in RI_FILES_LIST:
@@ -84,22 +93,22 @@ RI_FILES_LIST = ['ri_scope.csv',
                 'ri_info.csv']
 ## Account
 acc_mapping = {
-  'PortfolioNumber' : 'PortNumber',
-  'AccountNumber'   : 'AccNumber',
-  'PolicyNumber'    : 'PolNumber',
-  'PerilCode'       : 'AccPeril',
-  'Ded6'            : 'AccDed6All',
-  'Limit6'          : 'AccLimit6All',
-#  'AttachmentPoint': '',
-#  'CondLimit6': 'CondLimit6All',
-#  'CondMinDed6': 'CondMinDed6All',
-#  'ConditionName': '',
-#  'ConditionNumber': '',
-#  'DedType6': '',
-#  'LimitType6': '',
-#  'MinDed6': '',
-#  'PolicyLimit': 'LayerLimit',
-#  'PolicyParticipation': 'LayerParticipation',
+  'PortfolioNumber'    : 'PortNumber',
+  'AccountNumber'      : 'AccNumber',
+  'PolicyNumber'       : 'PolNumber',
+  'PerilCode'          : 'AccPeril',
+  'Ded6'               : 'AccDed6All',
+  'Limit6'             : 'AccLimit6All',
+  'AttachmentPoint'    : 'LayerAttachment',
+  'CondLimit6'         : 'CondLimit6All',
+  'CondMinDed6'        : 'CondMinDed6All',
+  'ConditionName'      : 'CondName',
+  'ConditionNumber'    : 'CondNumber',
+  'DedType6'           : 'AccDedType6All',
+  'LimitType6'         : 'AccLimitType6All',
+  'MinDed6'            : 'AccMinDed6All',
+  'PolicyLimit'        : 'LayerLimit',
+  'PolicyParticipation': 'LayerParticipation',
 }
 
 
@@ -320,19 +329,20 @@ loc_mapping = {
     'OtherTIV'      : 'OtherTIV',
     'ContentsTIV'   : 'ContentsTIV',
     'BITIV'         : 'BITIV',
-#    'AreaCode': '',
-#    'ConditionTag': '',
-#    'CountryISO': '',
-#    'Ded1': '',
-#    'Ded2': '',
-#    'Ded3': '',
-#    'DedCode1': '',
-#    'Limit1': '',
-#    'Limit2': '',
-#    'Limit3': '',
-#    'Limit4': '',
-#    'LocPeril': '',
-    }
+    'ConditionTag'  : 'CondTag',
+    'CountryISO'    : 'CountryCode',
+    'Ded1'          : 'LocDed1Building',
+    'Ded2'          : 'LocDed2Other',
+    'Ded3'          : 'LocDed3Contents',
+    'Ded6'          : 'LocDed6All',
+    'DedCode1'      : 'LocDedCode1Building',
+    'Limit1'        : 'LocLimit1Building',
+    'Limit2'        : 'LocLimit2Other',
+    'Limit3'        : 'LocLimit3Contents',
+    'Limit4'        : 'LocLimit4BI',
+    'Limit6'        : 'LocLimit6All',
+}
+
 
 all_loc_cols = [
     'AccNumber',
@@ -532,33 +542,10 @@ all_loc_cols = [
     'Payroll']
 
 info_mapping = {
-  'ReinsNumber'         : 'ReinsNumber',
-  'ReinsLayerNumber'    : 'ReinsLayerNumber',
-  'InuringPriority'     : 'InuringPriority',
-  'CededPercent'        : 'CededPercent',
-#  'CededAmount'         : 'CededPercent',
-  'RiskLimit'           : 'RiskLimit',
-  'RiskAttachmentPoint' : 'RiskAttachment',
-  'OccLimit'            : 'OccLimit',
-  'PlacementPercent'    : 'PlacedPercent',
-  'TreatyPercent'       : 'TreatyShare',
-  'ReinsType'           : 'ReinsType',
-#
-#  'AttachmentBasis': '',
-#  'DeemedPercentPlaced': '',
-#  'OccurenceAttachmentPoint': '',
-#  'OccurenceLimit': '',
-#  'ReinsCurrency': '',
-#  'ReinsExpiryDate': '',
-#  'ReinsFXrate': '',
-#  'ReinsInceptionDate': '',
-
-#  'ReinsName': '',
-#  'ReinsPerilCode': '',
-#  'ReinsPremium': '',
-#  'ReinstatementCharge': '',
-#  'ReinstatementNumber': '',
-#  'UseReinsDates': '',
+  'OccurenceAttachmentPoint' : 'OccAttachment',
+  'RiskAttachmentPoint'      : 'RiskAttachment',
+  'PlacementPercent'         : 'PlacedPercent',
+  'TreatyPercent'            : 'TreatyShare',
 }
 
 all_info_cols = [
@@ -593,13 +580,9 @@ all_info_cols = [
 
 scope_mapping = {
     'AccountNumber'     : 'AccNumber',
-    'CededPercent'      : 'CededPercent',
     'LocationNumber'    : 'LocNumber',
     'PolicyNumber'      : 'PolNumber',
     'PortfolioNumber'   : 'PortNumber',
-    'ReinsNumber'       : 'ReinsNumber',
-    'RiskLevel'         : 'RiskLevel',
-#    'CededAmount'       : 'CededPercent',
 }
 
 all_scope_cols = [

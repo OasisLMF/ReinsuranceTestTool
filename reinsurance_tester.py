@@ -10,115 +10,50 @@ import os
 import argparse
 import time
 import logging
-from reinsurance_layer import ReinsuranceLayer, validate_reinsurance_structures
+import subprocess
+import shutil
+from oasislmf.exposures import reinsurance_layer
+from oasislmf.exposures import oed
+from oasislmf.model_execution import bin
+
 from direct_layer import DirectLayer
-import common
 from collections import OrderedDict
 
 
-def load_oed_dfs(oed_dir, show_all=False):
-    """
-    Load OED data files.
-    """
 
-    do_reinsurance = True
-    if oed_dir is not None:
-        if not os.path.exists(oed_dir):
-            print("Path does not exist: {}".format(oed_dir))
-            exit(1)
-        # Account file
-        oed_account_file = os.path.join(oed_dir, "account.csv")
-        if not os.path.exists(oed_account_file):
-            print("Path does not exist: {}".format(oed_account_file))
-            exit(1)
-        account_df = pd.read_csv(oed_account_file)
+def run_fm(
+    input_name,
+    output_name,
+    xref_descriptions,
+    allocation=oed.ALLOCATE_TO_ITEMS_BY_PREVIOUS_LEVEL_ALLOC_ID):
+    command = "fmcalc -p {0} -n -a {2} < {1}.bin | tee {0}.bin | fmtocsv > {0}.csv".format(
+            output_name, input_name, allocation)
+    print(command)
+    proc = subprocess.Popen(command, shell=True)
+    proc.wait()
+    if proc.returncode != 0:
+        raise Exception("Failed to run fm")
+    losses_df = pd.read_csv("{}.csv".format(output_name))
+    inputs_df = pd.read_csv("{}.csv".format(input_name))
 
-        # Location file
-        oed_location_file = os.path.join(oed_dir, "location.csv")
-        if not os.path.exists(oed_location_file):
-            print("Path does not exist: {}".format(oed_location_file))
-            exit(1)
-        location_df = pd.read_csv(oed_location_file)
+    losses_df.drop(losses_df[losses_df.sidx != 1].index, inplace=True)
+    inputs_df.drop(inputs_df[inputs_df.sidx != 1].index, inplace=True)
+    losses_df = pd.merge(
+        inputs_df,
+        losses_df, left_on='output_id', right_on='output_id',
+        suffixes=('_pre', '_net'))
 
-        # RI files
-        oed_ri_info_file = os.path.join(oed_dir, "ri_info.csv")
-        oed_ri_scope_file = os.path.join(oed_dir, "ri_scope.csv")
-        oed_ri_info_file_exists = os.path.exists(oed_ri_info_file)
-        oed_ri_scope_file_exists = os.path.exists(oed_ri_scope_file)
-
-        if not oed_ri_info_file_exists and not oed_ri_scope_file_exists:
-            ri_info_df = None
-            ri_scope_df = None
-            do_reinsurance = False
-        elif oed_ri_info_file_exists and oed_ri_scope_file_exists:
-            ri_info_df = pd.read_csv(oed_ri_info_file)
-            ri_scope_df = pd.read_csv(oed_ri_scope_file)
-        else:
-            print("Both reinsurance files must exist: {} {}".format(
-                oed_ri_info_file, oed_ri_scope_file))
-        if not show_all:
-            account_df = account_df[common.OED_ACCOUNT_FIELDS].copy()
-            location_df = location_df[common.OED_LOCATION_FIELDS].copy()
-            if do_reinsurance:
-                ri_info_df = ri_info_df[common.OED_REINS_INFO_FIELDS].copy()
-                ri_scope_df = ri_scope_df[common.OED_REINS_SCOPE_FIELDS].copy()
-                ri_info_df['PlacementPercent'] = ri_info_df['PlacementPercent'].astype(float)
-    return (account_df, location_df, ri_info_df, ri_scope_df, do_reinsurance)
-
-
-def run_inuring_level_risk_level(
-        inuring_priority,
-        account_df,
-        location_df,
-        items,
-        coverages,
-        fm_xrefs,
+    losses_df = pd.merge(
         xref_descriptions,
-        ri_info_df,
-        ri_scope_df,
-        previous_inuring_priority,
-        previous_risk_level,
-        risk_level):
+        losses_df, left_on='xref_id', right_on='output_id')
 
-    reins_numbers_1 = ri_info_df[
-        ri_info_df['InuringPriority'] == inuring_priority].ReinsNumber
-    if reins_numbers_1.empty:
-        return None
-    reins_numbers_2 = ri_scope_df[
-        ri_scope_df.isin({"ReinsNumber": reins_numbers_1.tolist()}).ReinsNumber &
-        (ri_scope_df.RiskLevel == risk_level)].ReinsNumber
-    if reins_numbers_2.empty:
-        return None
-
-    ri_info_inuring_priority_df = ri_info_df[ri_info_df.isin(
-        {"ReinsNumber": reins_numbers_2.tolist()}).ReinsNumber]
-    output_name = "ri_{}_{}".format(inuring_priority, risk_level)
-    reinsurance_layer = ReinsuranceLayer(
-        name=output_name,
-        ri_info=ri_info_inuring_priority_df,
-        ri_scope=ri_scope_df,
-        accounts=account_df,
-        locations=location_df,
-        items=items,
-        coverages=coverages,
-        fm_xrefs=fm_xrefs,
-        xref_descriptions=xref_descriptions,
-        risk_level=risk_level
-    )
-
-    reinsurance_layer.generate_oasis_structures()
-    reinsurance_layer.write_oasis_files()
-
-    input_name = ""
-    if previous_inuring_priority is None and previous_risk_level is None:
-        input_name = "ils"
-    else:
-        input_name = "ri_{}_{}".format(previous_inuring_priority, previous_risk_level)
-
-    reinsurance_layer_losses_df = common.run_fm(
-        input_name, output_name, reinsurance_layer.xref_descriptions)
-
-    return reinsurance_layer_losses_df
+    del losses_df['event_id_pre']
+    del losses_df['sidx_pre']
+    del losses_df['event_id_net']
+    del losses_df['sidx_net']
+    del losses_df['output_id']
+    del losses_df['xref_id']
+    return losses_df
 
 
 def run_test(
@@ -157,48 +92,53 @@ def run_test(
         losses_df = direct_layer.apply_fm(
             loss_percentage_of_tiv=loss_factor, net=False)
         net_losses['Direct'] = losses_df
-        if do_reinsurance:
-            (is_valid, reisurance_layers) = validate_reinsurance_structures(
+
+
+        oed_validator = oed.OedValidator()
+        if  do_reinsurance:
+            (is_valid, error_msgs) = oed_validator.validate(
                 account_df, location_df, ri_info_df, ri_scope_df)
             if not is_valid:
-                print("Reinsuarnce structure not valid")
-                for reinsurance_layer in reisurance_layers:
-                    if not reinsurance_layer.is_valid:
-                        print("Inuring layer {} invalid:".format(
-                            reinsurance_layer.inuring_priority))
-                        for validation_message in reinsurance_layer.validation_messages:
-                            print("\t{}".format(validation_message))
-                        exit(0)
+                print(error_msgs)
+                exit(1)
 
-            previous_inuring_priority = None
-            previous_risk_level = None
-            for inuring_priority in range(1, ri_info_df['InuringPriority'].max() + 1):
-                # Filter the reinsNumbers by inuring_priority
-                reins_numbers = ri_info_df[ri_info_df['InuringPriority'] == inuring_priority].ReinsNumber.tolist()
-                risk_level_set = set(ri_scope_df[ri_scope_df['ReinsNumber'].isin(reins_numbers)].RiskLevel)
+        ri_layers = reinsurance_layer.generate_files_for_reinsurance(
+			account_df=account_df,
+			location_df=location_df,
+			items=direct_layer.items,
+			coverages=direct_layer.coverages,
+			fm_xrefs=direct_layer.fm_xrefs,
+			xref_descriptions=direct_layer.xref_descriptions,
+			ri_info_df=ri_info_df,
+			ri_scope_df=ri_scope_df,
+			direct_oasis_files_dir='',
+		)
+        
+        previous_inuring_priority = None
+        previous_risk_level = None
+        for idx in ri_layers:
+            '''
+            {'inuring_priority': 1, 'risk_level': 'LOC', 'directory': 'run/RI_1'}
+            {'inuring_priority': 1, 'risk_level': 'ACC', 'directory': 'run/RI_2'}
+            {'inuring_priority': 2, 'risk_level': 'LOC', 'directory': 'run/RI_3'}
+            {'inuring_priority': 3, 'risk_level': 'LOC', 'directory': 'run/RI_4'}
 
-                for risk_level in common.REINS_RISK_LEVELS:
-                    if risk_level not in risk_level_set:
-                        continue
-                    reinsurance_layer_losses_df = run_inuring_level_risk_level(
-                        inuring_priority,
-                        account_df,
-                        location_df,
-                        direct_layer.items,
-                        direct_layer.coverages,
-                        direct_layer.fm_xrefs,
-                        direct_layer.xref_descriptions,
-                        ri_info_df,
-                        ri_scope_df,
-                        previous_inuring_priority,
-                        previous_risk_level,
-                        risk_level)
-                    previous_inuring_priority = inuring_priority
-                    previous_risk_level = risk_level
+            '''
+            if idx < 2:                                                                                                                
+                input_name = "ils"
+            else:
+                input_name = ri_layers[idx-1]['directory']
+            bin.create_binary_files(ri_layers[idx]['directory'],
+                                    ri_layers[idx]['directory'], 
+                                    do_il=True)
 
-                    if reinsurance_layer_losses_df is not None:
-                        net_losses['Inuring priority:{} - Risk level:{}'.format(
-                            inuring_priority, risk_level)] = reinsurance_layer_losses_df
+            reinsurance_layer_losses_df = run_fm(input_name, 
+                                                 ri_layers[idx]['directory'], 
+                                                 direct_layer.xref_descriptions)
+            output_name = "Inuring_priority:{} - Risk_level:{}".format(ri_layers[idx]['inuring_priority'], 
+                                            ri_layers[idx]['risk_level'])
+            net_losses[output_name] = reinsurance_layer_losses_df
+        return net_losses
 
     finally:
         os.chdir(cwd)
@@ -265,7 +205,7 @@ if __name__ == "__main__":
     loss_factor = args.loss_factor
     logger = (setup_logger(args.debug) if args.debug else None)
 
-    (account_df, location_df, ri_info_df, ri_scope_df, do_reinsurance) = load_oed_dfs(oed_dir)
+    (account_df, location_df, ri_info_df, ri_scope_df, do_reinsurance) = oed.load_oed_dfs(oed_dir)
 
     net_losses = run_test(
         run_name,

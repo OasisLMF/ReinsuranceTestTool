@@ -13,6 +13,7 @@ import pandas as pd
 import os 
 import sys
 from pathlib import Path
+from oasislmf.exposures import oed
 
 top_level_dir = str(Path(__file__).parents[1])
 sys.path.insert(0, top_level_dir)
@@ -48,6 +49,10 @@ test_examples = ['loc_SS',
                  'simple_acc_FAC',
                  'simple_QS',
                  'multiple_QS_1',
+                 'acc_PR',
+                 'loc_1_2_PR',
+                 'loc_PR',
+                 'pol_PR',
                  'simple_loc_FAC']
 
 
@@ -85,7 +90,7 @@ class test_reinsurance_values(unittest.TestCase):
             ri_info_df, 
             ri_scope_df, 
             do_reinsurance
-        ) = reinsurance_tester.load_oed_dfs(case_dir)
+        ) = oed.load_oed_dfs(case_dir)
 
         net_losses = reinsurance_tester.run_test(
             "ri_testing",
@@ -101,7 +106,9 @@ class test_reinsurance_values(unittest.TestCase):
             )    
 
             expected_df = pd.read_csv(expected_file)
-            assert_frame_equal(net_losses[key],
+            #found_df  = net_losses[key].drop(['portfolio_number'], axis=1)
+            found_df = net_losses[key]
+            assert_frame_equal(found_df,
                                expected_df)
 
 

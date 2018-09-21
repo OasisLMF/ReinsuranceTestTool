@@ -6,11 +6,24 @@ import pathlib
 top_level_dir = str(pathlib.Path(__file__).parents[1])
 sys.path.insert(0, top_level_dir)
 
-import reinsurance_tester
 import pandas as pd
+
+import reinsurance_tester
+from oasislmf.exposures import oed
 
 
 output_dir = os.path.join(top_level_dir, 'tests', 'expected')
+
+
+class term_colour:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
 
 # Simple set of tests
@@ -60,10 +73,8 @@ case_run_list =  [
 #print(os.listdir(input_dir))
 for case in case_run_list:
     output_location = os.path.join(output_dir, 'calc', case.rsplit('/')[-1])
-
     try:
         os.makedirs(output_location)
-
         try:
             print('[RUNNING]  "{}"'.format(case))
             (
@@ -72,7 +83,7 @@ for case in case_run_list:
                 ri_info_df,
                 ri_scope_df,
                 do_reinsurance
-            ) = reinsurance_tester.load_oed_dfs(case, show_all=False)
+            ) = oed.load_oed_dfs(case, show_all=False)
 
             net_losses = reinsurance_tester.run_test(
                 'run_reinsurance',
@@ -90,10 +101,9 @@ for case in case_run_list:
                 #print(file_out)
                 net_losses[key].to_csv(file_out, index=False)
                 
-            print('[SUCCESS]  "{}"'.format(case))
+            print(term_colour.OKGREEN + '[SUCCESS]  "{}"'.format(case) + term_colour.ENDC)
         except Exception as e:
-            print('[FAILED]   "{}"'.format(case))
-            print(e)
+            print(term_colour.FAIL + '[FAILED]   "{} - {}"'.format(case,e) + term_colour.ENDC)
 
     except FileExistsError as e:
-        print('[SKIPPED]  "{}" dir exisits'.format(case, output_location))
+        print(term_colour.WARNING + '[SKIPPED]  "{}" dir exisits'.format(case, output_location) + term_colour.ENDC)

@@ -3,3 +3,5 @@ python-dev
 build-essential
 gdb
 autoconf
+unixodbc
+unixodbc-dev

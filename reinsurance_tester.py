@@ -96,15 +96,12 @@ def run_test(
 
         oed_validator = oed.OedValidator()
         if  do_reinsurance:
-            (is_valid, error_msgs) = oed_validator.validate(
-                account_df, location_df, ri_info_df, ri_scope_df)
+            (is_valid, error_msgs) = oed_validator.validate(ri_info_df, ri_scope_df)
             if not is_valid:
                 print(error_msgs)
                 exit(1)
 
         ri_layers = reinsurance_layer.generate_files_for_reinsurance(
-			account_df=account_df,
-			location_df=location_df,
 			items=direct_layer.items,
 			coverages=direct_layer.coverages,
 			fm_xrefs=direct_layer.fm_xrefs,
@@ -205,11 +202,11 @@ if __name__ == "__main__":
     loss_factor = args.loss_factor
     logger = (setup_logger(args.debug) if args.debug else None)
 
-    (account_df, location_df, ri_info_df, ri_scope_df, do_reinsurance) = oed.load_oed_dfs(oed_dir)
+    (ri_info_df, ri_scope_df, do_reinsurance) = oed.load_oed_dfs(oed_dir)
 
     net_losses = run_test(
         run_name,
-        account_df, location_df, ri_info_df, ri_scope_df,
+        ri_info_df, ri_scope_df,
         loss_factor,
         do_reinsurance,
         logger)

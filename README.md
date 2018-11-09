@@ -39,6 +39,7 @@ pip install ipykernel
 ipython kernel install --user --name=ReinsuranceTestTool
 ```
 
+
 ## Running the test tool
 The test tool can either be ran directly from the command line using "reinsurance_tester.py", or via the Jupyter note book "run_test.ipynb".
 

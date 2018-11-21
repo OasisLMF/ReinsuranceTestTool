@@ -7,6 +7,7 @@ from tabulate import tabulate
 import pandas as pd
 import shutil
 import os
+import json
 import argparse
 import time
 import logging
@@ -98,8 +99,10 @@ def run_test(
         if  do_reinsurance:
             (is_valid, error_msgs) = oed_validator.validate(ri_info_df, ri_scope_df)
             if not is_valid:
-                print(error_msgs)
-                exit(1)
+                print("Validation Failed:")
+                for m in error_msgs:
+                    print(json.dumps(m, indent=4, sort_keys=True))
+                return False
 
         ri_layers = reinsurance_layer.generate_files_for_reinsurance(
 			items=direct_layer.items,

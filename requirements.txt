@@ -10,4 +10,5 @@ anytree
 pytest
 parameterized
 pathlib
-git+git://github.com/OasisLMF/OasisLMF.git@feature/reinsurance#egg=oasislmf
+oasislmf==1.2.2
+#-e git+https://github.com/OasisLMF/OasisLMF.git@feature/full_reinsurance_filtering#egg=oasislmf

@@ -6,6 +6,7 @@
 | [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/OasisLMF/ReinsuranceTestTool/master) | Stable |
 | [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/OasisLMF/ReinsuranceTestTool/dev) | Development |
 
+
 Test tool for new Oasis reinsurance functionality.
 A library of worked examples will be created that will be used to validate:
 * the interpretation of the Open Exposure Data (OED) input format
@@ -37,6 +38,7 @@ jupyter nbextension enable --py --sys-prefix qgrid
 pip install ipykernel
 ipython kernel install --user --name=ReinsuranceTestTool
 ```
+
 
 ## Running the test tool
 The test tool can either be ran directly from the command line using "reinsurance_tester.py", or via the Jupyter note book "run_test.ipynb".

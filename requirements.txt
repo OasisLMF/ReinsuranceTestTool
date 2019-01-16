@@ -11,4 +11,4 @@ pytest
 parameterized
 pathlib
 #-e git+https://github.com/OasisLMF/OasisLMF.git@feature/full_reinsurance_filtering#egg=oasislmf
-#-e git+https://github.com/OasisLMF/OasisLMF.git@feature/mdk-reinsurance-integration#egg=oasislmf
+-e git+https://github.com/OasisLMF/OasisLMF.git@feature/mdk-reinsurance-integration#egg=oasislmf

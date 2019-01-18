@@ -1,7 +1,8 @@
-python-pip
-python-dev
+autoconf
 build-essential
 gdb
-autoconf
+libspatialindex-dev
+python-pip
+python-dev
 unixodbc
 unixodbc-dev

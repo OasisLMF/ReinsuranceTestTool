@@ -2,7 +2,7 @@ import pandas as pd
 import os
 import subprocess
 import shutil
-from oasislmf.exposures import oed
+from oasislmf.model_preparation import oed
 
 
 class DirectLayer(object):

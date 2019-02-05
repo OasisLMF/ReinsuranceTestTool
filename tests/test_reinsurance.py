@@ -11,7 +11,7 @@ from pandas.util.testing import assert_frame_equal
 from oasislmf.exposures import oed
 from oasislmf.model_execution import bin
 from .direct_layer import DirectLayer
-from oasislmf.exposures import reinsurance_layer
+from oasislmf.model_preparation import reinsurance_layer
 
 from collections import OrderedDict
 from backports.tempfile import TemporaryDirectory

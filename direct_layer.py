@@ -1,8 +1,12 @@
-import pandas as pd
+# -*- coding: utf-8 -*-
+
 import os
-import subprocess
 import shutil
-from oasislmf.exposures import oed
+import subprocess
+
+import pandas as pd
+
+from oasislmf.model_preparation import oed
 
 
 class DirectLayer(object):

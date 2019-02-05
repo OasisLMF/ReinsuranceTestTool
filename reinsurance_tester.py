@@ -12,8 +12,8 @@ import time
 import logging
 import subprocess
 import shutil
-from oasislmf.exposures import reinsurance_layer
-from oasislmf.exposures import oed
+from oasislmf.model_preparation import reinsurance_layer
+from oasislmf.model_preparation import oed
 from oasislmf.model_execution import bin
 
 from direct_layer import DirectLayer

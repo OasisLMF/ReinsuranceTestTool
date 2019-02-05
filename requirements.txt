@@ -11,4 +11,4 @@ pytest
 parameterized
 hypothesis
 pathlib
--e git+https://github.com/OasisLMF/OasisLMF.git@feature/mdk-ri-integration#egg=oasislmf
+-e git+https://github.com/OasisLMF/OasisLMF.git@develop#egg=oasislmf

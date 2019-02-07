@@ -27,7 +27,7 @@ If using another distribution then the comparable packages will need to be ident
 We recommend using a Python virtual environment for running the exercises. To set up the your virtual environment, run the following commands in the project root directory:
 
 ```
-virtualenv venv
+virtualenv -p python3.6 venv
 source venv/bin/activate
 pip install -r requirements.txt
 jupyter nbextension install --user --py fileupload

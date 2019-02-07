@@ -11,4 +11,4 @@ pytest
 parameterized
 hypothesis
 pathlib
-oasislmf==1.2.6
+oasislmf>=1.2.6

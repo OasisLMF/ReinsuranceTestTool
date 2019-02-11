@@ -1,0 +1,19 @@
+FROM python:3.6
+
+WORKDIR /home/run
+
+#COPY ./ ./
+COPY ["./requirements.txt", \                                                                                                                                                             
+      "./apt.txt", \
+      "./postBuild", \
+      "./"]
+
+RUN apt-get update && apt-get install -y $(grep -vE "^\s*#" apt.txt) && \
+    rm -rf /var/lib/apt/lists/*
+RUN pip install -r requirements.txt
+RUN ./postBuild
+
+#COPY ./docker/startup.sh /usr/local/bin/
+#ENTRYPOINT startup.sh
+EXPOSE 8888
+CMD ["jupyter", "notebook", "--port=8888", "--allow-root", "--no-browser", "--ip=0.0.0.0"]

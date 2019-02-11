@@ -5,7 +5,6 @@ Takes input data in OED format, and invokes the Oasis Platform financial module.
 """
 from tabulate import tabulate
 import pandas as pd
-import shutil
 import os
 import json
 import argparse
@@ -13,8 +12,8 @@ import time
 import logging
 import subprocess
 import shutil
-from oasislmf.exposures import reinsurance_layer
-from oasislmf.exposures import oed
+from oasislmf.model_preparation import reinsurance_layer
+from oasislmf.model_preparation import oed
 from oasislmf.model_execution import bin
 
 from direct_layer import DirectLayer
@@ -59,7 +58,8 @@ def run_fm(
 
 def run_test(
         run_name,
-        account_df, location_df, ri_info_df, ri_scope_df,
+        account_df, location_df, 
+        ri_info_df, ri_scope_df,
         loss_factor,
         do_reinsurance,
         logger=None):
@@ -104,40 +104,40 @@ def run_test(
                     print(json.dumps(m, indent=4, sort_keys=True))
                 return False
 
-        ri_layers = reinsurance_layer.generate_files_for_reinsurance(
-			items=direct_layer.items,
-			coverages=direct_layer.coverages,
-			fm_xrefs=direct_layer.fm_xrefs,
-			xref_descriptions=direct_layer.xref_descriptions,
-			ri_info_df=ri_info_df,
-			ri_scope_df=ri_scope_df,
-			direct_oasis_files_dir='',
-		)
-        
-        previous_inuring_priority = None
-        previous_risk_level = None
-        for idx in ri_layers:
-            '''
-            {'inuring_priority': 1, 'risk_level': 'LOC', 'directory': 'run/RI_1'}
-            {'inuring_priority': 1, 'risk_level': 'ACC', 'directory': 'run/RI_2'}
-            {'inuring_priority': 2, 'risk_level': 'LOC', 'directory': 'run/RI_3'}
-            {'inuring_priority': 3, 'risk_level': 'LOC', 'directory': 'run/RI_4'}
+            ri_layers = reinsurance_layer.generate_files_for_reinsurance(
+                items=direct_layer.items,
+                coverages=direct_layer.coverages,
+                fm_xrefs=direct_layer.fm_xrefs,
+                xref_descriptions=direct_layer.xref_descriptions,
+                ri_info_df=ri_info_df,
+                ri_scope_df=ri_scope_df,
+                direct_oasis_files_dir='',
+            )
+            
+            previous_inuring_priority = None
+            previous_risk_level = None
+            for idx in ri_layers:
+                '''
+                {'inuring_priority': 1, 'risk_level': 'LOC', 'directory': 'run/RI_1'}
+                {'inuring_priority': 1, 'risk_level': 'ACC', 'directory': 'run/RI_2'}
+                {'inuring_priority': 2, 'risk_level': 'LOC', 'directory': 'run/RI_3'}
+                {'inuring_priority': 3, 'risk_level': 'LOC', 'directory': 'run/RI_4'}
 
-            '''
-            if idx < 2:                                                                                                                
-                input_name = "ils"
-            else:
-                input_name = ri_layers[idx-1]['directory']
-            bin.create_binary_files(ri_layers[idx]['directory'],
-                                    ri_layers[idx]['directory'], 
-                                    do_il=True)
+                '''
+                if idx < 2:                                                                                                                
+                    input_name = "ils"
+                else:
+                    input_name = ri_layers[idx-1]['directory']
+                bin.create_binary_files(ri_layers[idx]['directory'],
+                                        ri_layers[idx]['directory'], 
+                                        do_il=True)
 
-            reinsurance_layer_losses_df = run_fm(input_name, 
-                                                 ri_layers[idx]['directory'], 
-                                                 direct_layer.xref_descriptions)
-            output_name = "Inuring_priority:{} - Risk_level:{}".format(ri_layers[idx]['inuring_priority'], 
-                                            ri_layers[idx]['risk_level'])
-            net_losses[output_name] = reinsurance_layer_losses_df
+                reinsurance_layer_losses_df = run_fm(input_name, 
+                                                    ri_layers[idx]['directory'], 
+                                                    direct_layer.xref_descriptions)
+                output_name = "Inuring_priority:{} - Risk_level:{}".format(ri_layers[idx]['inuring_priority'], 
+                                                ri_layers[idx]['risk_level'])
+                net_losses[output_name] = reinsurance_layer_losses_df
         return net_losses
 
     finally:

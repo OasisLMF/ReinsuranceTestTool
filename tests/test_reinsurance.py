@@ -1,20 +1,24 @@
-import unittest
 import os
-import time
 import subprocess
-
-import pandas as pd
-import numpy as np
-
-from parameterized import parameterized
-from pandas.util.testing import assert_frame_equal
-from oasislmf.exposures import oed
-from oasislmf.model_execution import bin
-from .direct_layer import DirectLayer
-from oasislmf.model_preparation import reinsurance_layer
+import time
+import unittest
 
 from collections import OrderedDict
+
+import numpy as np
+import pandas as pd
+
 from backports.tempfile import TemporaryDirectory
+from pandas.util.testing import assert_frame_equal
+from parameterized import parameterized
+
+from oasislmf.model_preparation import (
+    oed,
+    reinsurance_layer,
+)
+from oasislmf.model_execution import bin
+from .direct_layer import DirectLayer
+
 
 cwd = os.path.dirname(os.path.realpath(__file__))
 cwd = '/'.join(cwd.rsplit('/')[:-1])

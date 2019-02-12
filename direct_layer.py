@@ -69,8 +69,10 @@ class DirectLayer(object):
             fmprofiles_list.append(
                 oed.get_profile(
                     profile_id,
-                    deductible=policy.AccDed6All,
-                    limit=policy.AccLimit6All))
+                    deductible=policy.get('AccDed6All'),
+                    limit=policy.get('AccLimit6All')
+                )
+            )
             fm_policytcs_list.append(oed.FmPolicyTc(
                 layer_id=1,
                 level_id=2,
@@ -85,8 +87,8 @@ class DirectLayer(object):
                 fmprofiles_list.append(
                     oed.get_profile(
                         profile_id=profile_id,
-                        deductible=location.LocDed6All,
-                        limit=location.LocLimit6All))
+                        deductible=location.get('LocDed6All'),
+                        limit=location.get('LocLimit6All')))
                 fm_policytcs_list.append(oed.FmPolicyTc(
                     layer_id=1,
                     level_id=1,

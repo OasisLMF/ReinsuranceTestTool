@@ -11,4 +11,5 @@ pytest
 parameterized
 hypothesis
 pathlib
--e git+https://github.com/OasisLMF/OasisLMF.git@develop#egg=oasislmf
+#-e git+https://github.com/OasisLMF/OasisLMF.git@develop#egg=oasislmf
+oasislmf==>1.2.6

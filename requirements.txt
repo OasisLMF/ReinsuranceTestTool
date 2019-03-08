@@ -12,4 +12,4 @@ pathlib
 pytest
 qgrid
 tabulate>=0.8.2
-oasislmf==1.2.8
+-e git+https://github.com/OasisLMF/OasisLMF.git@fix/deterministic-ri-layer-loss-calculation#egg=oasislmf

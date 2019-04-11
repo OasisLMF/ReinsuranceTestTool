@@ -4,7 +4,7 @@
 | Run test tool   | Build |
 |--------------|-------|
 | [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/OasisLMF/ReinsuranceTestTool/master) | Stable |
-| [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/OasisLMF/ReinsuranceTestTool/dev) | Development |
+| [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/OasisLMF/ReinsuranceTestTool/develop) | Development |
 
 
 Test tool for new Oasis reinsurance functionality.

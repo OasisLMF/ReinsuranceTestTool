@@ -1,0 +1,6 @@
+PortNumber,AccNumber,AccCurrency,PolNumber,PolPerilsCovered,LayerParticipation,LayerLimit,LayerAttachment,PolDed6All,PolMinDed6All,PolMaxDed6All,PolLimit6All,CondNumber,CondDed6All,CondMinDed6All,CondMaxDed6All,CondLimit6All
+P1,A1,0,L1,0,1,10000,0,0,0,0,0,,0,0,0,0
+P1,A1,0,L2,0,1,10000,-,0,0,0,0,,0,0,0,0
+P1,A2,0,L1,0,1,10000,0,0,0,0,0,,0,0,0,0
+P2,A3,0,L1,0,1,10000,0,0,0,0,0,,0,0,0,0
+P2,A4,0,L1,0,1,10000,0,0,0,0,0,,0,0,0,0

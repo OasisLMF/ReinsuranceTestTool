@@ -4,7 +4,7 @@ ipdb
 ipywidgets
 fileupload
 matplotlib>=2.1.1
-numpy==1.14.5
+numpy==1.22.0
 pandas>=0.22.0
 pandas-datareader>=0.5.0
 parameterized
